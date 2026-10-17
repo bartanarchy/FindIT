@@ -68,7 +68,12 @@ function escapeHome(?string $value): string
             </a>
 
             <div class="d-flex align-items-center gap-2 flex-wrap">
+
                 <?php if ($user && $user['role'] === 'student'): ?>
+
+                    <a href="report-item.php" class="btn btn-dark">
+                        + Report Found Item
+                    </a>
 
                     <a href="my-claims.php" class="btn btn-outline-dark">
                         My Claims

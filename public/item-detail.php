@@ -18,7 +18,6 @@ try {
             i.detail_lokasi,
             i.tanggal_ditemukan,
             i.ciri_umum,
-            i.ciri_khusus,
             i.status_barang,
             c.name_category
         FROM public.item AS i
@@ -166,12 +165,7 @@ function displayValue($value): string
                                     <dt class="col-sm-4 mb-2">General Description</dt>
                                     <dd class="col-sm-8 mb-3">
                                         <?= nl2br(displayValue($item['ciri_umum'])) ?>
-                                    </dd>
-
-                                    <dt class="col-sm-4 mb-2">Distinctive Features</dt>
-                                    <dd class="col-sm-8 mb-0">
-                                        <?= nl2br(displayValue($item['ciri_khusus'])) ?>
-                                    </dd>
+                                    </dd>                                    
                                 </dl>
                             </section>
 
