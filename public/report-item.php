@@ -178,219 +178,177 @@ $successMessage = (
 
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+<?php
 
-    <title>Report Found Item | FindIT</title>
+require_once dirname(__DIR__) . '/app/helpers/ui.php';
 
-    <link
-        rel="stylesheet"
-        href="assets/vendor/bootstrap/css/bootstrap.min.css"
-    >
-    <link
-        rel="stylesheet"
-        href="assets/css/style.css"
-    >
-</head>
-<body>
+fiHead('Report found item | FindIT');
+fiPublicNav(currentUser(), 'report');
+?>
 
-<header class="border-bottom bg-white">
-    <nav class="container py-3 d-flex justify-content-between align-items-center gap-3">
-        <a
-            href="index.php"
-            class="text-decoration-none fw-bold fs-4 text-dark"
-        >
-            FindIT<span style="color: #7B913E;">.</span>
-        </a>
+<main class="fi-main" id="main">
+    <div class="fi-container">
+        <div class="fi-narrow">
 
-        <div class="d-flex align-items-center gap-2 flex-wrap">
-            <a href="index.php" class="btn btn-outline-dark">
-                Home
-            </a>
+            <a href="index.php" class="fi-back-link">&larr; Back to found items</a>
 
-            <a href="my-claims.php" class="btn btn-outline-dark">
-                My Claims
-            </a>
-
-            <a href="logout.php" class="btn btn-dark">
-                Sign out
-            </a>
-        </div>
-    </nav>
-</header>
-
-<main class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-12 col-lg-8">
-
-            <p class="text-secondary small mb-2">
-                CAMPUS LOST &amp; FOUND / REPORT ITEM
-            </p>
-
-            <h1 class="display-5 fw-bold mb-3">
-                Report a found item.
-            </h1>
-
-            <p class="text-secondary mb-4">
-                Share the general details so the owner can recognize the item.
-                Keep distinctive features private for verification.
-            </p>
+            <?php
+            fiPageHeader(
+                'Campus lost & found / Report item',
+                'Report a<br><span>found item.</span>',
+                'Share the general details so the owner can recognize the item. '
+                . 'Keep distinctive features private for verification.'
+            );
+            ?>
 
             <?php if ($errorMessage !== ''): ?>
-                <div class="alert alert-danger" role="alert">
-                    <?= escapeReportItemHtml($errorMessage) ?>
-                </div>
+                <?php fiAlert('danger', $errorMessage); ?>
             <?php endif; ?>
 
             <?php if ($successMessage !== ''): ?>
-                <div class="alert alert-success" role="status">
-                    <?= escapeReportItemHtml($successMessage) ?>
-                </div>
+                <?php fiAlert('success', $successMessage, true); ?>
             <?php endif; ?>
 
-            <section class="fi-panel p-4">
-                <form method="POST" action="report-item.php">
-                    <input
-                        type="hidden"
-                        name="csrf_token"
-                        value="<?= escapeReportItemHtml(generateCsrfToken()) ?>"
-                    >
+            <form method="POST" action="report-item.php" class="fi-form-card needs-validation" novalidate>
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="<?= fiE(generateCsrfToken()) ?>">
 
-                    <div class="mb-3">
-                        <label for="nama_barang" class="form-label">
-                            Item name
-                        </label>
+                <section class="fi-form-section">
+                    <h2 class="fi-form-section-title">Item details</h2>
+                    <p class="fi-form-section-hint">
+                        This information is shown publicly on the item listing.
+                    </p>
 
-                        <input
-                            type="text"
-                            class="form-control"
-                            id="nama_barang"
-                            name="nama_barang"
-                            maxlength="100"
-                            value="<?= escapeReportItemHtml($formData['nama_barang']) ?>"
-                            required
-                        >
-                    </div>
+                    <div class="row g-3">
+                        <div class="col-12 col-md-7">
+                            <label for="nama_barang" class="form-label">
+                                Item name<span class="fi-required" aria-hidden="true">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                class="form-control"
+                                id="nama_barang"
+                                name="nama_barang"
+                                maxlength="100"
+                                placeholder="Example: Black wireless headphones"
+                                value="<?= fiE($formData['nama_barang']) ?>"
+                                required>
+                            <div class="invalid-feedback">Please enter the item name.</div>
+                        </div>
 
-                    <div class="mb-3">
-                        <label for="id_kategori" class="form-label">
-                            Category
-                        </label>
+                        <div class="col-12 col-md-5">
+                            <label for="id_kategori" class="form-label">
+                                Category<span class="fi-required" aria-hidden="true">*</span>
+                            </label>
+                            <select
+                                class="form-select"
+                                id="id_kategori"
+                                name="id_kategori"
+                                required>
+                                <option value="">Select a category</option>
+                                <?php foreach ($categories as $category): ?>
+                                    <option
+                                        value="<?= (int) $category['id_category'] ?>"
+                                        <?= (string) $formData['id_kategori'] === (string) $category['id_category']
+                                            ? 'selected'
+                                            : '' ?>>
+                                        <?= fiE($category['name_category']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <div class="invalid-feedback">Please choose a category.</div>
+                        </div>
 
-                        <select
-                            class="form-select"
-                            id="id_kategori"
-                            name="id_kategori"
-                            required
-                        >
-                            <option value="">Select a category</option>
+                        <div class="col-12 col-md-8">
+                            <label for="detail_lokasi" class="form-label">
+                                Location found<span class="fi-required" aria-hidden="true">*</span>
+                            </label>
+                            <textarea
+                                class="form-control"
+                                id="detail_lokasi"
+                                name="detail_lokasi"
+                                rows="2"
+                                maxlength="5000"
+                                placeholder="Example: IT Building, 5th floor corridor"
+                                required><?= fiE($formData['detail_lokasi']) ?></textarea>
+                            <div class="invalid-feedback">Please tell us where you found the item.</div>
+                        </div>
 
-                            <?php foreach ($categories as $category): ?>
-                                <option
-                                    value="<?= (int) $category['id_category'] ?>"
-                                    <?= (string) $formData['id_kategori'] ===
-                                        (string) $category['id_category']
-                                        ? 'selected'
-                                        : '' ?>
-                                >
-                                    <?= escapeReportItemHtml($category['name_category']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
+                        <div class="col-12 col-md-4">
+                            <label for="tanggal_ditemukan" class="form-label">
+                                Date found<span class="fi-required" aria-hidden="true">*</span>
+                            </label>
+                            <input
+                                type="date"
+                                class="form-control"
+                                id="tanggal_ditemukan"
+                                name="tanggal_ditemukan"
+                                max="<?= date('Y-m-d') ?>"
+                                value="<?= fiE($formData['tanggal_ditemukan']) ?>"
+                                required>
+                            <div class="invalid-feedback">Choose a date that is not in the future.</div>
+                        </div>
 
-                    <div class="mb-3">
-                        <label for="detail_lokasi" class="form-label">
-                            Location found
-                        </label>
-
-                        <textarea
-                            class="form-control"
-                            id="detail_lokasi"
-                            name="detail_lokasi"
-                            rows="2"
-                            maxlength="5000"
-                            required
-                        ><?= escapeReportItemHtml($formData['detail_lokasi']) ?></textarea>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="tanggal_ditemukan" class="form-label">
-                            Date found
-                        </label>
-
-                        <input
-                            type="date"
-                            class="form-control"
-                            id="tanggal_ditemukan"
-                            name="tanggal_ditemukan"
-                            max="<?= date('Y-m-d') ?>"
-                            value="<?= escapeReportItemHtml($formData['tanggal_ditemukan']) ?>"
-                            required
-                        >
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="ciri_umum" class="form-label">
-                            General features
-                        </label>
-
-                        <textarea
-                            class="form-control"
-                            id="ciri_umum"
-                            name="ciri_umum"
-                            rows="3"
-                            maxlength="5000"
-                            placeholder="Describe the item's visible appearance."
-                        ><?= escapeReportItemHtml($formData['ciri_umum']) ?></textarea>
-                    </div>
-
-                    <div class="mb-4">
-                        <label for="ciri_khusus" class="form-label">
-                            Distinctive features (private)
-                        </label>
-
-                        <textarea
-                            class="form-control"
-                            id="ciri_khusus"
-                            name="ciri_khusus"
-                            rows="3"
-                            maxlength="5000"
-                            placeholder="Enter details only the finder and admin should know."
-                            required
-                        ><?= escapeReportItemHtml($formData['ciri_khusus']) ?></textarea>
-
-                        <div class="form-text">
-                            This information will not be shown on the public item listing.
-                            The admin will use it to help verify ownership claims.
+                        <div class="col-12">
+                            <label for="ciri_umum" class="form-label">General features</label>
+                            <textarea
+                                class="form-control"
+                                id="ciri_umum"
+                                name="ciri_umum"
+                                rows="3"
+                                maxlength="5000"
+                                data-counter
+                                placeholder="Describe the item's visible appearance, such as color and brand."><?= fiE($formData['ciri_umum']) ?></textarea>
                         </div>
                     </div>
+                </section>
 
-                    <div class="d-flex gap-2 flex-wrap">
-                        <button type="submit" class="btn btn-dark">
-                            Submit report
-                        </button>
+                <section class="fi-form-section">
+                    <h2 class="fi-form-section-title">Verification details</h2>
+                    <p class="fi-form-section-hint">
+                        Only the admin can see this. It is used to verify ownership claims.
+                    </p>
 
-                        <a href="index.php" class="btn btn-outline-dark">
-                            Cancel
-                        </a>
+                    <label for="ciri_khusus" class="form-label">
+                        Distinctive features (private)<span class="fi-required" aria-hidden="true">*</span>
+                    </label>
+                    <textarea
+                        class="form-control"
+                        id="ciri_khusus"
+                        name="ciri_khusus"
+                        rows="3"
+                        maxlength="5000"
+                        data-counter
+                        placeholder="Enter details only the finder and admin should know."
+                        required><?= fiE($formData['ciri_khusus']) ?></textarea>
+                    <div class="invalid-feedback">
+                        Please add at least one distinctive feature for verification.
                     </div>
-                </form>
-            </section>
+
+                    <div class="fi-callout mt-3">
+                        This information will not be shown on the public item listing.
+                        The admin will use it to help verify ownership claims.
+                    </div>
+                </section>
+
+                <div class="fi-form-actions">
+                    <button
+                        type="submit"
+                        class="btn btn-primary"
+                        data-loading-text="Submitting...">
+                        Submit report
+                    </button>
+                    <a href="index.php" class="btn btn-outline-secondary">Cancel</a>
+                </div>
+            </form>
 
         </div>
     </div>
 </main>
 
-<footer class="container py-4 text-center text-secondary small">
-    FindIT — Helping students reconnect with their lost belongings.
-</footer>
-
-<script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-<script src="assets/js/app.js"></script>
-
+<?php fiFooter(); ?>
+<?php fiScripts('assets'); ?>
 </body>
 </html>

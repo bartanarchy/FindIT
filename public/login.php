@@ -41,61 +41,50 @@ function escapeLoginHtml(string $value): string
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 }
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login | FindIT</title>
+<?php
 
-    <link rel="stylesheet" href="assets/vendor/bootstrap/css/bootstrap.min.css">
-    <link rel="stylesheet" href="assets/css/style.css">
-</head>
-<body class="bg-light">
+require_once dirname(__DIR__) . '/app/helpers/ui.php';
 
-<main class="container min-vh-100 d-flex align-items-center justify-content-center py-5">
-    <div class="card border-0 shadow-sm rounded-4 w-100" style="max-width: 450px;">
-        <div class="card-body p-4 p-md-5">
+fiHead('Sign in | FindIT');
+fiPublicNav(null, 'login');
+?>
 
-            <div class="text-center mb-4">
-                <a href="index.php" class="text-decoration-none text-dark">
-                    <h2 class="fw-bold mb-2">FindIT</h2>
-                </a>
-                <p class="text-secondary mb-0">
-                    Welcome back! Sign in to your account.
-                </p>
+<main class="fi-auth" id="main">
+    <div class="fi-auth-card">
+
+        <div class="fi-auth-head">
+            <a href="index.php" class="fi-brand">FindIT<span>.</span></a>
+            <p>Welcome back! Sign in to your account.</p>
+        </div>
+
+        <?php if ($errorMessage !== ''): ?>
+            <?php fiAlert('danger', $errorMessage); ?>
+        <?php endif; ?>
+
+        <form method="POST" action="login.php" class="needs-validation" novalidate>
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="<?= fiE($csrfToken) ?>">
+
+            <div class="mb-3">
+                <label for="email" class="form-label">Campus email</label>
+                <input
+                    type="email"
+                    class="form-control"
+                    id="email"
+                    name="email"
+                    maxlength="100"
+                    value="<?= fiE($email) ?>"
+                    placeholder="you@example.com"
+                    autocomplete="username"
+                    required>
+                <div class="invalid-feedback">Please enter a valid email address.</div>
             </div>
 
-            <?php if ($errorMessage !== ''): ?>
-                <div class="alert alert-danger" role="alert">
-                    <?= escapeLoginHtml($errorMessage) ?>
-                </div>
-            <?php endif; ?>
-
-            <form method="POST" action="login.php">
-                <input
-                    type="hidden"
-                    name="csrf_token"
-                    value="<?= escapeLoginHtml($csrfToken) ?>"
-                >
-
-                <div class="mb-3">
-                    <label for="email" class="form-label">Campus Email</label>
-                    <input
-                        type="email"
-                        class="form-control"
-                        id="email"
-                        name="email"
-                        maxlength="100"
-                        value="<?= escapeLoginHtml($email) ?>"
-                        placeholder="you@example.com"
-                        autocomplete="username"
-                        required
-                    >
-                </div>
-
-                <div class="mb-4">
-                    <label for="password" class="form-label">Password</label>
+            <div class="mb-4">
+                <label for="password" class="form-label">Password</label>
+                <div class="input-group has-validation">
                     <input
                         type="password"
                         class="form-control"
@@ -103,30 +92,36 @@ function escapeLoginHtml(string $value): string
                         name="password"
                         autocomplete="current-password"
                         placeholder="Enter your password"
-                        required
-                    >
+                        required>
+                    <button
+                        type="button"
+                        class="btn fi-pass-toggle"
+                        data-toggle-password="#password"
+                        aria-label="Show or hide password">Show</button>
+                    <div class="invalid-feedback">Please enter your password.</div>
                 </div>
+            </div>
 
-                <button type="submit" class="btn btn-primary w-100 py-2">
-                    Sign In
-                </button>
-            </form>
+            <button
+                type="submit"
+                class="btn btn-primary w-100"
+                data-loading-text="Signing in...">
+                Sign in
+            </button>
+        </form>
 
-            <p class="text-center text-secondary mt-4 mb-0">
-                Don't have an account?
-                <a href="register.php" class="text-decoration-none">Create one</a>
-            </p>
+        <p class="fi-auth-foot">
+            Don't have an account?
+            <a href="register.php">Create one</a>
+        </p>
 
-            <p class="text-center mt-3 mb-0">
-                <a href="index.php" class="text-secondary small text-decoration-none">
-                    Back to homepage
-                </a>
-            </p>
-
-        </div>
+        <p class="fi-auth-foot">
+            <a href="index.php" class="small">&larr; Back to homepage</a>
+        </p>
     </div>
 </main>
 
-<script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<?php fiFooter(); ?>
+<?php fiScripts('assets'); ?>
 </body>
 </html>

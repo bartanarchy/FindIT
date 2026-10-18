@@ -61,149 +61,132 @@ function displayValue($value): string
 }
 
 ?>
-<!DOCTYPE html>
-<html lang="en">
+<?php
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+require_once dirname(__DIR__) . '/app/helpers/auth.php';
+require_once dirname(__DIR__) . '/app/helpers/ui.php';
 
-    <title>
-        <?= $item ? escapeHtml($item['nama_barang']) . ' - FindIT' : 'Item Not Found - FindIT' ?>
-    </title>
+$viewer = currentUser();
+$pageTitle = $item
+    ? $item['nama_barang'] . ' - FindIT'
+    : 'Item Not Found - FindIT';
+$isAvailable = $item && $item['status_barang'] === 'Ditemukan';
 
-    <link
-        rel="stylesheet"
-        href="assets/vendor/bootstrap/css/bootstrap.min.css">
-    <link rel="stylesheet" href="assets/css/style.css">
-</head>
+fiHead($pageTitle);
+fiPublicNav($viewer, 'home');
+?>
 
-<body>
-
-    <header class="border-bottom bg-white">
-        <nav class="container py-3 d-flex justify-content-between align-items-center">
-            <a href="index.php" class="text-decoration-none fw-bold fs-4 text-dark">
-                FindIT
-            </a>
-
-            <a href="index.php" class="btn btn-outline-primary">
-                Back to Home
-            </a>
-        </nav>
-    </header>
-
-    <main class="container py-5">
+<main class="fi-main" id="main">
+    <div class="fi-container">
 
         <?php if (!$item): ?>
 
-            <section class="text-center py-5">
-                <h1 class="h3 mb-3">Item Not Found</h1>
-                <p class="text-secondary">
-                    The item may have been removed or the link may be invalid.
-                </p>
-                <a href="index.php" class="btn btn-primary">
-                    Return to Homepage
-                </a>
-            </section>
+            <div class="fi-narrow fi-empty-boxed">
+                <?php
+                fiEmptyState(
+                    'Item not found',
+                    'The item may have been removed or the link may be invalid.',
+                    '<a href="index.php" class="btn btn-primary">Return to homepage</a>',
+                    '?'
+                );
+                ?>
+            </div>
 
         <?php else: ?>
 
-            <div class="row justify-content-center">
+            <a href="index.php" class="fi-back-link">&larr; Back to found items</a>
+
+            <div class="row g-4">
                 <div class="col-12 col-lg-8">
+                    <article class="fi-panel">
+                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                            <?php fiBadge($item['status_barang']); ?>
+                            <span class="small">Report #<?= (int) $item['kode_laporan'] ?></span>
+                        </div>
 
-                    <a
-                        href="index.php"
-                        class="text-decoration-none d-inline-block mb-4">
-                        &larr; Back to found items
-                    </a>
+                        <h1 class="fi-title mb-3" style="font-size: clamp(1.9rem, 4.5vw, 2.8rem);">
+                            <?= fiE($item['nama_barang']) ?>
+                        </h1>
 
-                    <article class="card border-0 shadow-sm">
-                        <div class="card-body p-4 p-md-5">
+                        <p class="text-secondary mb-4">
+                            Review the information below to check whether
+                            this is the item you are looking for.
+                        </p>
 
-                            <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
-                                <span class="badge text-bg-success">
-                                    <?= escapeHtml($item['status_barang']) ?>
-                                </span>
+                        <h2 class="fi-form-section-title mb-3">Item information</h2>
 
-                                <span class="text-secondary small">
-                                    Report #<?= (int) $item['kode_laporan'] ?>
-                                </span>
+                        <dl class="fi-fields mb-0">
+                            <div class="fi-field">
+                                <dt class="fi-field-label">Category</dt>
+                                <dd class="fi-field-value">
+                                    <span class="fi-chip"><?= fiOr($item['name_category']) ?></span>
+                                </dd>
                             </div>
 
-                            <h1 class="h2 fw-bold mb-3">
-                                <?= escapeHtml($item['nama_barang']) ?>
-                            </h1>
+                            <div class="fi-field">
+                                <dt class="fi-field-label">Date found</dt>
+                                <dd class="fi-field-value"><?= fiDate($item['tanggal_ditemukan'], 'Not provided') ?></dd>
+                            </div>
 
-                            <p class="text-secondary mb-4">
-                                Review the information below to check whether
-                                this is the item you are looking for.
+                            <div class="fi-field fi-field--wide">
+                                <dt class="fi-field-label">Location found</dt>
+                                <dd class="fi-field-value"><?= nl2br(fiOr($item['detail_lokasi'])) ?></dd>
+                            </div>
+
+                            <div class="fi-field fi-field--wide">
+                                <dt class="fi-field-label">General description</dt>
+                                <dd class="fi-field-value"><?= nl2br(fiOr($item['ciri_umum'])) ?></dd>
+                            </div>
+                        </dl>
+                    </article>
+                </div>
+
+                <aside class="col-12 col-lg-4">
+                    <div class="fi-panel fi-sticky">
+                        <p class="fi-panel-kicker">Claim process</p>
+                        <h2 class="h5 mb-2">Is this your item?</h2>
+
+                        <?php if ($isAvailable): ?>
+                            <p class="text-secondary">
+                                If you believe this item belongs to you, continue to the claim
+                                form. An admin will verify your answers before pickup.
                             </p>
 
-                            <hr>
+                            <a
+                                href="claim.php?id=<?= (int) $item['kode_laporan'] ?>"
+                                class="btn btn-primary w-100">
+                                Claim this item
+                            </a>
 
-                            <section class="mb-4">
-                                <h2 class="h5 fw-semibold mb-3">
-                                    Item Information
-                                </h2>
-
-                                <dl class="row mb-0">
-                                    <dt class="col-sm-4 mb-2">Category</dt>
-                                    <dd class="col-sm-8 mb-3">
-                                        <?= displayValue($item['name_category']) ?>
-                                    </dd>
-
-                                    <dt class="col-sm-4 mb-2">Location Found</dt>
-                                    <dd class="col-sm-8 mb-3">
-                                        <?= displayValue($item['detail_lokasi']) ?>
-                                    </dd>
-
-                                    <dt class="col-sm-4 mb-2">Date Found</dt>
-                                    <dd class="col-sm-8 mb-3">
-                                        <?= displayValue($item['tanggal_ditemukan']) ?>
-                                    </dd>
-
-                                    <dt class="col-sm-4 mb-2">General Description</dt>
-                                    <dd class="col-sm-8 mb-3">
-                                        <?= nl2br(displayValue($item['ciri_umum'])) ?>
-                                    </dd>                                    
-                                </dl>
-                            </section>
-
-                            <hr>
-
-                            <section class="mt-4">
-                                <h2 class="h5 fw-semibold mb-2">
-                                    Is this your item?
-                                </h2>
-
-                                <p class="text-secondary">
-                                    If you believe this item belongs to you,
-                                    you can proceed to the claim process.
+                            <?php if (!$viewer): ?>
+                                <p class="small mt-3 mb-0">
+                                    You need to <a href="login.php">sign in</a> as a student
+                                    before you can submit a claim.
                                 </p>
+                            <?php endif; ?>
+                        <?php else: ?>
+                            <p class="text-secondary mb-3">
+                                This item is no longer available for new claims.
+                            </p>
+                            <a href="index.php" class="btn btn-outline-secondary w-100">
+                                Browse other items
+                            </a>
+                        <?php endif; ?>
 
-                                <a
-                                    href="claim.php?id=<?= (int) $item['kode_laporan'] ?>"
-                                    class="btn btn-primary">
-                                    Claim This Item
-                                </a>
-                            </section>
-
+                        <div class="fi-callout mt-4">
+                            Distinctive features are kept private. You will be asked to
+                            describe them to prove ownership.
                         </div>
-                    </article>
-
-                </div>
+                    </div>
+                </aside>
             </div>
 
         <?php endif; ?>
 
-    </main>
+    </div>
+</main>
 
-    <footer class="container py-4 text-center text-secondary small">
-        <p class="mb-0">
-            FindIT &mdash; Helping students reconnect with their lost belongings.
-        </p>
-    </footer>
-
+<?php fiFooter(); ?>
+<?php fiScripts('assets'); ?>
 </body>
-
 </html>

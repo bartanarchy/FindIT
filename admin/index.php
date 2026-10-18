@@ -13,72 +13,103 @@ function escapeAdminHtml(string $value): string
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 }
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard | FindIT</title>
+<?php
 
-    <link rel="stylesheet" href="../public/assets/vendor/bootstrap/css/bootstrap.min.css">
-    <link rel="stylesheet" href="../public/assets/css/style.css">
-</head>
-<body class="bg-light">
+require_once dirname(__DIR__) . '/config/config.php';
+require_once dirname(__DIR__) . '/app/helpers/ui.php';
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-    <div class="container">
-        <a class="navbar-brand fw-bold" href="index.php">FindIT Admin</a>
+// Load the numbers shown on the dashboard cards.
+$stats = [
+    'items' => null,
+    'available' => null,
+    'pending' => null,
+    'approved' => null,
+];
+$statsError = false;
 
-        <div class="d-flex align-items-center gap-3">
-            <span class="text-white">
-                <?= escapeAdminHtml($admin['name'] ?? 'Administrator') ?>
-            </span>
-            <a href="../public/logout.php" class="btn btn-outline-light btn-sm">
-                Sign Out
-            </a>
-        </div>
-    </div>
-</nav>
+try {
+    $row = $pdo->query("
+        SELECT
+            (SELECT COUNT(*) FROM public.item) AS items,
+            (SELECT COUNT(*) FROM public.item WHERE status_barang = 'Ditemukan') AS available,
+            (SELECT COUNT(*) FROM public.claim WHERE status_klaim = 'Menunggu Verifikasi') AS pending,
+            (SELECT COUNT(*) FROM public.claim WHERE status_klaim = 'Disetujui') AS approved
+    ")->fetch();
 
-<main class="container py-5">
-    <div class="mb-4">
-        <h1 class="fw-bold">Admin Dashboard</h1>
-        <p class="text-secondary mb-0">
-            Manage reported items and review student claims.
-        </p>
-    </div>
+    if ($row) {
+        $stats = array_map('intval', $row);
+    }
+} catch (PDOException $e) {
+    error_log('[FindIT] Dashboard statistics error: ' . $e->getMessage());
+    $statsError = true;
+}
 
-    <div class="row g-4">
-        <div class="col-md-6">
-            <div class="card border-0 shadow-sm rounded-4 h-100">
-                <div class="card-body p-4">
-                    <h2 class="h5 fw-bold">Manage Items</h2>
-                    <p class="text-secondary">
-                        Review and manage items reported by students.
-                    </p>
-                    <a href="items.php" class="btn btn-primary">
-                        View Items
-                    </a>
-                </div>
+$showStat = static function ($value): string {
+    return $value === null ? '&ndash;' : number_format((int) $value);
+};
+
+fiHead('Admin dashboard | FindIT', '../public/assets');
+fiAdminNav('dashboard');
+?>
+
+<main class="fi-main" id="main">
+    <div class="fi-container">
+
+        <?php
+        fiPageHeader(
+            'Campus lost & found / Admin',
+            'Admin<br><span>dashboard.</span>',
+            'Welcome back, ' . ($admin['name'] ?? 'Administrator')
+            . '. Manage reported items and review student claims.'
+        );
+        ?>
+
+        <?php if ($statsError): ?>
+            <?php fiAlert('warning', 'The statistics could not be loaded right now. You can still use the links below.'); ?>
+        <?php endif; ?>
+
+        <section class="fi-stat-grid" aria-label="Summary">
+            <div class="fi-stat fi-stat--lime">
+                <span class="fi-stat-value"><?= $showStat($stats['pending']) ?></span>
+                <span class="fi-stat-label">Claims to review</span>
             </div>
-        </div>
-
-        <div class="col-md-6">
-            <div class="card border-0 shadow-sm rounded-4 h-100">
-                <div class="card-body p-4">
-                    <h2 class="h5 fw-bold">Manage Claims</h2>
-                    <p class="text-secondary">
-                        Review claim requests submitted by students.
-                    </p>
-                    <a href="claims.php" class="btn btn-primary">
-                        View Claims
-                    </a>
-                </div>
+            <div class="fi-stat">
+                <span class="fi-stat-value"><?= $showStat($stats['available']) ?></span>
+                <span class="fi-stat-label">Items available</span>
             </div>
-        </div>
+            <div class="fi-stat fi-stat--lilac">
+                <span class="fi-stat-value"><?= $showStat($stats['items']) ?></span>
+                <span class="fi-stat-label">Total item reports</span>
+            </div>
+            <div class="fi-stat fi-stat--clay">
+                <span class="fi-stat-value"><?= $showStat($stats['approved']) ?></span>
+                <span class="fi-stat-label">Claims approved</span>
+            </div>
+        </section>
+
+        <section class="fi-action-grid" aria-label="Admin shortcuts">
+            <div class="fi-action-card">
+                <h2>Manage items</h2>
+                <p>Review, add, and edit items reported by students.</p>
+                <a href="items.php" class="btn btn-primary">View items</a>
+            </div>
+
+            <div class="fi-action-card">
+                <h2>Manage claims</h2>
+                <p>
+                    Review claim requests, compare the evidence with the original report,
+                    and approve or reject.
+                </p>
+                <a href="claims.php" class="btn btn-primary">
+                    View claims<?= !empty($stats['pending']) ? ' (' . (int) $stats['pending'] . ' waiting)' : '' ?>
+                </a>
+            </div>
+        </section>
+
     </div>
 </main>
 
-<script src="../public/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<?php fiFooter('Admin workspace'); ?>
+<?php fiScripts('../public/assets'); ?>
 </body>
 </html>

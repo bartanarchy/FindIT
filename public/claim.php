@@ -177,183 +177,151 @@ if (!empty($_SESSION['claim_success_message'])) {
 $csrfToken = generateCsrfToken();
 
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+<?php
 
-    <title>Claim Item | FindIT</title>
+require_once dirname(__DIR__) . '/app/helpers/ui.php';
 
-    <link rel="stylesheet"
-          href="assets/vendor/bootstrap/css/bootstrap.min.css">
-    <link rel="stylesheet"
-          href="assets/css/style.css">
-</head>
-<body>
+$itemId = (int) $item['kode_laporan'];
 
-<header class="border-bottom bg-white">
-    <nav class="container py-3 d-flex justify-content-between align-items-center">
-        <a href="index.php" class="text-decoration-none fw-bold fs-4 text-dark">
-            FindIT
-        </a>
+fiHead('Claim item | FindIT');
+fiPublicNav(currentUser(), 'home');
+?>
 
-        <a href="item-detail.php?id=<?= (int) $item['kode_laporan'] ?>"
-           class="btn btn-outline-dark">
-            Back to item
-        </a>
-    </nav>
-</header>
+<main class="fi-main" id="main">
+    <div class="fi-container">
+        <div class="fi-narrow">
 
-<main class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-12 col-lg-8">
+            <a href="item-detail.php?id=<?= $itemId ?>" class="fi-back-link">&larr; Back to item</a>
 
-            <p class="text-secondary small mb-2">CAMPUS LOST & FOUND / CLAIM</p>
-            <h1 class="display-5 fw-bold mb-3">Claim this item.</h1>
+            <?php
+            fiPageHeader(
+                'Campus lost & found / Claim',
+                'Claim this<br><span>item.</span>',
+                'Tell us a few details that can help the admin verify that this item belongs to you.'
+            );
+            ?>
 
-            <p class="text-secondary mb-4">
-                Tell us a few details that can help the admin verify that
-                this item belongs to you.
-            </p>
-
-            <section class="card border-0 shadow-sm mb-4">
-                <div class="card-body p-4">
-                    <p class="text-secondary small mb-1">ITEM REPORT #<?= (int) $item['kode_laporan'] ?></p>
-
-                    <h2 class="h4 mb-2">
-                        <?= escapeClaimPage($item['nama_barang']) ?>
-                    </h2>
-
-                    <p class="mb-1">
-                        <strong>Category:</strong>
-                        <?= escapeClaimPage($item['name_category'] ?? 'Uncategorized') ?>
-                    </p>
-
-                    <p class="mb-1">
-                        <strong>Found at:</strong>
-                        <?= escapeClaimPage($item['detail_lokasi'] ?? 'Not specified') ?>
-                    </p>
-
-                    <p class="mb-0">
-                        <strong>Date found:</strong>
-                        <?= escapeClaimPage($item['tanggal_ditemukan'] ?? 'Not specified') ?>
+            <section class="fi-summary" aria-label="Item summary">
+                <div>
+                    <p class="fi-panel-kicker mb-1">Item report #<?= $itemId ?></p>
+                    <h2 class="fi-summary-title"><?= fiE($item['nama_barang']) ?></h2>
+                    <p class="fi-summary-meta">
+                        <?= fiOr($item['name_category'] ?? '', 'Uncategorized') ?>
+                        &middot; <?= fiOr($item['detail_lokasi'] ?? '', 'Location not specified') ?>
+                        &middot; <?= fiDate($item['tanggal_ditemukan'] ?? '') ?>
                     </p>
                 </div>
+                <?php fiBadge($item['status_barang']); ?>
             </section>
 
             <?php if ($errorMessage !== ''): ?>
-                <div class="alert alert-danger" role="alert">
-                    <?= escapeClaimPage($errorMessage) ?>
-                </div>
+                <?php fiAlert('danger', $errorMessage); ?>
             <?php endif; ?>
 
             <?php if ($successMessage !== ''): ?>
-                <div class="alert alert-success" role="status">
-                    <?= escapeClaimPage($successMessage) ?>
-                </div>
 
-                <a href="index.php" class="btn btn-dark">
-                    Back to found items
-                </a>
+                <?php fiAlert('success', $successMessage); ?>
+
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="my-claims.php" class="btn btn-primary">View my claims</a>
+                    <a href="index.php" class="btn btn-outline-secondary">Back to found items</a>
+                </div>
 
             <?php elseif ($item['status_barang'] !== 'Ditemukan'): ?>
-                <div class="alert alert-warning" role="alert">
-                    This item is not currently available for claims.
-                </div>
+
+                <?php fiAlert('warning', 'This item is not currently available for claims.'); ?>
+
+                <a href="index.php" class="btn btn-outline-secondary">Browse other items</a>
 
             <?php else: ?>
-                <form method="POST"
-                      action="claim.php?id=<?= (int) $item['kode_laporan'] ?>"
-                      class="card border-0 shadow-sm">
 
-                    <div class="card-body p-4 p-md-5">
-                        <input
-                            type="hidden"
-                            name="csrf_token"
-                            value="<?= escapeClaimPage($csrfToken) ?>"
-                        >
+                <form
+                    method="POST"
+                    action="claim.php?id=<?= $itemId ?>"
+                    class="fi-form-card needs-validation"
+                    novalidate>
+                    <input
+                        type="hidden"
+                        name="csrf_token"
+                        value="<?= fiE($csrfToken) ?>">
 
-                        <div class="mb-4">
-                            <label for="lokasi_kehilangan" class="form-label fw-semibold">
-                                Where did you lose the item?
-                            </label>
-
-                            <textarea
-                                class="form-control"
-                                id="lokasi_kehilangan"
-                                name="lokasi_kehilangan"
-                                rows="3"
-                                maxlength="5000"
-                                required
-                            ><?= escapeClaimPage($formData['lokasi_kehilangan']) ?></textarea>
-
-                            <div class="form-text">
-                                Describe the location where you think you lost it.
-                            </div>
+                    <div class="mb-4">
+                        <label for="lokasi_kehilangan" class="form-label">
+                            Where did you lose the item?<span class="fi-required" aria-hidden="true">*</span>
+                        </label>
+                        <textarea
+                            class="form-control"
+                            id="lokasi_kehilangan"
+                            name="lokasi_kehilangan"
+                            rows="3"
+                            maxlength="5000"
+                            data-counter
+                            required><?= fiE($formData['lokasi_kehilangan']) ?></textarea>
+                        <div class="invalid-feedback">Please describe where you think you lost it.</div>
+                        <div class="form-text">
+                            Describe the location where you think you lost it.
                         </div>
+                    </div>
 
-                        <div class="mb-4">
-                            <label for="terakhir_di_lihat" class="form-label fw-semibold">
-                                When and where did you last see it?
-                            </label>
+                    <div class="mb-4">
+                        <label for="terakhir_di_lihat" class="form-label">
+                            When and where did you last see it?<span class="fi-required" aria-hidden="true">*</span>
+                        </label>
+                        <textarea
+                            class="form-control"
+                            id="terakhir_di_lihat"
+                            name="terakhir_di_lihat"
+                            rows="3"
+                            maxlength="5000"
+                            data-counter
+                            required><?= fiE($formData['terakhir_di_lihat']) ?></textarea>
+                        <div class="invalid-feedback">Please tell us when and where you last saw it.</div>
+                    </div>
 
-                            <textarea
-                                class="form-control"
-                                id="terakhir_di_lihat"
-                                name="terakhir_di_lihat"
-                                rows="3"
-                                maxlength="5000"
-                                required
-                            ><?= escapeClaimPage($formData['terakhir_di_lihat']) ?></textarea>
+                    <div class="mb-4">
+                        <label for="ciri_khusus_claim" class="form-label">
+                            What makes this item yours?<span class="fi-required" aria-hidden="true">*</span>
+                        </label>
+                        <textarea
+                            class="form-control"
+                            id="ciri_khusus_claim"
+                            name="ciri_khusus_claim"
+                            rows="4"
+                            maxlength="5000"
+                            data-counter
+                            required><?= fiE($formData['ciri_khusus_claim']) ?></textarea>
+                        <div class="invalid-feedback">Please describe features only the owner would know.</div>
+                        <div class="form-text">
+                            Include details only the owner would know, such as a sticker,
+                            scratch, case, or other distinctive feature.
                         </div>
+                    </div>
 
-                        <div class="mb-4">
-                            <label for="ciri_khusus_claim" class="form-label fw-semibold">
-                                What makes this item yours?
-                            </label>
+                    <div class="fi-callout">
+                        Your information will be reviewed by a FindIT administrator.
+                        Submitting a claim does not guarantee approval.
+                    </div>
 
-                            <textarea
-                                class="form-control"
-                                id="ciri_khusus_claim"
-                                name="ciri_khusus_claim"
-                                rows="4"
-                                maxlength="5000"
-                                required
-                            ><?= escapeClaimPage($formData['ciri_khusus_claim']) ?></textarea>
-
-                            <div class="form-text">
-                                Include details only the owner would know, such as
-                                a sticker, scratch, case, or other distinctive feature.
-                            </div>
-                        </div>
-
-                        <p class="text-secondary small">
-                            Your information will be reviewed by a FindIT administrator.
-                            Submitting a claim does not guarantee approval.
-                        </p>
-
-                        <button type="submit" class="btn btn-dark">
+                    <div class="fi-form-actions">
+                        <button
+                            type="submit"
+                            class="btn btn-primary"
+                            data-loading-text="Submitting...">
                             Submit claim
                         </button>
-
-                        <a href="item-detail.php?id=<?= (int) $item['kode_laporan'] ?>"
-                           class="btn btn-outline-dark ms-2">
+                        <a href="item-detail.php?id=<?= $itemId ?>" class="btn btn-outline-secondary">
                             Cancel
                         </a>
                     </div>
                 </form>
+
             <?php endif; ?>
 
         </div>
     </div>
 </main>
 
-<footer class="container py-4 text-center text-secondary small">
-    <p class="mb-0">
-        FindIT — Helping students reconnect with their lost belongings.
-    </p>
-</footer>
-
+<?php fiFooter(); ?>
+<?php fiScripts('assets'); ?>
 </body>
 </html>

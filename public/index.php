@@ -42,159 +42,191 @@ function escapeHome(?string $value): string
 }
 
 ?>
-<!DOCTYPE html>
-<html lang="en">
+<?php
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+require_once dirname(__DIR__) . '/app/helpers/ui.php';
 
-    <title>FindIT - Lost and Found</title>
+// Build the category filter from categories that actually have items.
+$categoryNames = [];
 
-    <link rel="stylesheet"
-        href="assets/vendor/bootstrap/css/bootstrap.min.css">
+foreach ($items as $row) {
+    $categoryName = trim((string) ($row['name_category'] ?? ''));
 
-    <link rel="stylesheet"
-        href="assets/css/style.css">
-</head>
+    if ($categoryName !== '') {
+        $categoryNames[$categoryName] = $categoryName;
+    }
+}
 
-<body>
+natcasesort($categoryNames);
+$totalItems = count($items);
 
-    <header class="border-bottom bg-white">
-        <nav class="container py-3 d-flex justify-content-between align-items-center gap-3">
-            <a href="index.php"
-                class="text-decoration-none fw-bold fs-4 text-dark">
-                FindIT<span style="color: #7B913E;">.</span>
-            </a>
+fiHead('FindIT - Lost and Found');
+fiPublicNav($user, 'home');
+?>
 
-            <div class="d-flex align-items-center gap-2 flex-wrap">
+<!-- Boostrap  -->
+<main class="fi-main" id="main">
+    <div class="fi-container">
 
-                <?php if ($user && $user['role'] === 'student'): ?>
+        <header class="fi-hero">
+            <div class="fi-hero-text">
+                <p class="fi-eyebrow">Campus lost &amp; found / FindIT</p>
+                <h1 class="fi-title">Lost something?<br><span>FindIT.</span></h1>
+                <p class="fi-lead">
+                    Find your lost belongings and help others find theirs.
+                    Browse the items found around campus below.
+                </p>
 
-                    <a href="report-item.php" class="btn btn-dark">
-                        + Report Found Item
-                    </a>
-
-                    <a href="my-claims.php" class="btn btn-outline-dark">
-                        My Claims
-                    </a>
-
-                    <span class="text-secondary small d-none d-md-inline">
-                        <?= escapeHome($user['name'] ?? 'Student') ?>
-                    </span>
-
-                    <a href="logout.php" class="btn btn-dark">
-                        Sign out
-                    </a>
-
-                <?php elseif ($user && $user['role'] === 'admin'): ?>
-
-                    <a href="../admin/index.php" class="btn btn-outline-dark">
-                        Admin Dashboard
-                    </a>
-
-                    <a href="logout.php" class="btn btn-dark">
-                        Sign out
-                    </a>
-
-                <?php else: ?>
-
-                    <a href="login.php" class="btn btn-outline-dark">
-                        Sign in
-                    </a>
-
-                    <a href="register.php" class="btn btn-dark">
-                        Register
-                    </a>
-
-                <?php endif; ?>
+                <div class="fi-hero-actions">
+                    <?php if ($user && $user['role'] === 'student'): ?>
+                        <a href="report-item.php" class="btn btn-primary">+ Report found item</a>
+                        <a href="my-claims.php" class="btn btn-outline-secondary">My claims</a>
+                    <?php elseif ($user && $user['role'] === 'admin'): ?>
+                        <a href="../admin/index.php" class="btn btn-primary">Open admin dashboard</a>
+                    <?php else: ?>
+                        <a href="register.php" class="btn btn-primary">Create an account</a>
+                        <a href="login.php" class="btn btn-outline-secondary">Sign in</a>
+                    <?php endif; ?>
+                </div>
             </div>
-        </nav>
-    </header>
 
-    <main class="container py-5">
-        <section class="mb-5">
-            <p class="text-secondary small mb-2">
-                CAMPUS LOST & FOUND / FINDIT
-            </p>
-
-            <h1 class="display-4 fw-bold">FindIT</h1>
-
-            <p class="text-secondary">
-                Find your lost belongings and help others find theirs.
-            </p>
-        </section>
+            <div class="fi-count" role="group" aria-label="Items waiting for their owners">
+                <span class="fi-count-number"><?= number_format($totalItems) ?></span>
+                <span class="fi-count-label">Items waiting</span>
+            </div>
+        </header>
 
         <section aria-labelledby="found-items-heading">
-            <div class="d-flex justify-content-between align-items-end gap-3 mb-4">
+            <div class="fi-section-head">
                 <div>
-                    <p class="text-secondary small mb-1">THE INVENTORY</p>
-                    <h2 id="found-items-heading" class="h3 mb-0">
-                        Found items
-                    </h2>
+                    <p class="fi-eyebrow mb-1">The inventory</p>
+                    <h2 id="found-items-heading">Found items</h2>
                 </div>
 
-                <span class="text-secondary small">
-                    <?= count($items) ?> item(s)
-                </span>
+                <?php if ($totalItems > 0): ?>
+                    <span class="small" aria-live="polite">
+                        Showing <strong id="home-visible-count"><?= $totalItems ?></strong>
+                        of <?= number_format($totalItems) ?> item(s)
+                    </span>
+                <?php endif; ?>
             </div>
 
-            <div class="row g-4">
-                <?php if (empty($items)): ?>
+            <?php if ($totalItems === 0): ?>
 
-                    <div class="col-12">
-                        <div class="p-4 border rounded-3 bg-white">
-                            <h3 class="h5">No found items yet</h3>
-                            <p class="text-secondary mb-0">
-                                Found item reports will appear here when available.
-                            </p>
-                        </div>
+                <div class="fi-empty-boxed">
+                    <?php
+                    fiEmptyState(
+                        'No found items yet',
+                        'Found item reports will appear here as soon as they are available.',
+                        ($user && $user['role'] === 'student')
+                            ? '<a href="report-item.php" class="btn btn-primary">Report a found item</a>'
+                            : ''
+                    );
+                    ?>
+                </div>
+
+            <?php else: ?>
+
+                <div class="fi-toolbar fi-toolbar--standalone">
+                    <div class="fi-toolbar-field">
+                        <label for="home-search">Search items</label>
+                        <input
+                            type="search"
+                            class="form-control"
+                            id="home-search"
+                            placeholder="Item name, category, or location..."
+                            autocomplete="off">
                     </div>
 
-                <?php else: ?>
+                    <div class="fi-toolbar-field">
+                        <label for="home-category">Category</label>
+                        <select class="form-select" id="home-category">
+                            <option value="">All categories</option>
+                            <?php foreach ($categoryNames as $categoryName): ?>
+                                <option value="<?= fiE($categoryName) ?>">
+                                    <?= fiE($categoryName) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
 
+                    <div class="fi-toolbar-field d-flex align-items-end">
+                        <button type="button" class="btn btn-outline-secondary w-100" id="home-reset">
+                            Reset filters
+                        </button>
+                    </div>
+                </div>
+
+                <div class="fi-item-grid">
                     <?php foreach ($items as $item): ?>
-                        <article class="col-12 col-md-6 col-lg-4">
-                            <div class="card h-100 border-0 shadow-sm">
-                                <div class="card-body p-4">
-                                    <p class="text-secondary small mb-2">
-                                        <?= escapeHome($item['name_category'] ?? 'Uncategorized') ?>
+                        <?php
+                        $searchText = mb_strtolower(implode(' ', [
+                            (string) ($item['nama_barang'] ?? ''),
+                            (string) ($item['name_category'] ?? ''),
+                            (string) ($item['detail_lokasi'] ?? ''),
+                        ]));
+                        ?>
+                        <article
+                            class="fi-item-card"
+                            data-item-card
+                            data-search="<?= fiE($searchText) ?>"
+                            data-category="<?= fiE($item['name_category'] ?? '') ?>">
+
+                            <div class="fi-item-card-top">
+                                <span class="fi-chip">
+                                    <?= fiOr($item['name_category'] ?? '', 'Uncategorized') ?>
+                                </span>
+                                <span class="fi-item-card-id">#<?= (int) $item['kode_laporan'] ?></span>
+                            </div>
+
+                            <h3 class="fi-item-card-title">
+                                <?= fiE($item['nama_barang']) ?>
+                            </h3>
+
+                            <div class="fi-item-card-meta">
+                                <div class="fi-field">
+                                    <span class="fi-field-label">Location</span>
+                                    <p class="fi-field-value">
+                                        <?= fiOr($item['detail_lokasi'] ?? '', 'Not specified') ?>
                                     </p>
-
-                                    <h3 class="h5 fw-bold">
-                                        <?= escapeHome($item['nama_barang']) ?>
-                                    </h3>
-
-                                    <p class="mb-2">
-                                        <strong>Location:</strong>
-                                        <?= escapeHome($item['detail_lokasi'] ?? 'Not specified') ?>
-                                    </p>
-
-                                    <p class="text-secondary small mb-4">
-                                        <strong>Date found:</strong>
-                                        <?= escapeHome($item['tanggal_ditemukan'] ?? 'Not specified') ?>
-                                    </p>
-
-                                    <a
-                                        class="btn btn-dark"
-                                        href="item-detail.php?id=<?= (int) $item['kode_laporan'] ?>">
-                                        View Details
-                                    </a>
                                 </div>
+
+                                <div class="fi-field">
+                                    <span class="fi-field-label">Date found</span>
+                                    <p class="fi-field-value">
+                                        <?= fiDate($item['tanggal_ditemukan'] ?? '') ?>
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="fi-item-card-footer">
+                                <a
+                                    class="btn btn-outline-secondary w-100"
+                                    href="item-detail.php?id=<?= (int) $item['kode_laporan'] ?>">
+                                    View details
+                                </a>
                             </div>
                         </article>
                     <?php endforeach; ?>
+                </div>
 
-                <?php endif; ?>
-            </div>
+                <div id="home-no-results" class="fi-empty-boxed mt-3" hidden>
+                    <?php
+                    fiEmptyState(
+                        'No matching items',
+                        'Try a different search term or choose another category.',
+                        '',
+                        '?'
+                    );
+                    ?>
+                </div>
+
+            <?php endif; ?>
         </section>
-    </main>
+    </div>
+</main>
 
-    <footer class="container py-4 text-center text-secondary small">
-        FindIT — Helping students reconnect with their lost belongings.
-    </footer>
-
-    <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<?php fiFooter(); ?>
+<?php fiScripts('assets'); ?>
 </body>
-
 </html>

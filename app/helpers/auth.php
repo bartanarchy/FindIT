@@ -6,6 +6,16 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
+function appBasePath(): string
+{
+    // Pages live in /public or /admin, so the project root is one folder above them.
+    // This keeps redirects working no matter which folder the project is placed in.
+    $script = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
+    $root = dirname(dirname($script));
+
+    return ($root === '/' || $root === '.' || $root === '\\') ? '' : rtrim($root, '/');
+}
+
 function isLoggedIn(): bool
 {
     // If the session has a user ID and role, we treat this person as logged in.
@@ -22,7 +32,7 @@ function requireLogin(): void
 {
     // A visitor without a valid login needs to sign in first.
     if (!isLoggedIn()) {
-        header('Location: /FindIT/public/login.php');
+        header('Location: ' . appBasePath() . '/public/login.php');
         exit;
     }
 }
@@ -47,10 +57,10 @@ function redirectLoggedInUser(): void
     }
 
     if ($_SESSION['user']['role'] === 'admin') {
-        header('Location: /FindIT/admin/index.php');
+        header('Location: ' . appBasePath() . '/admin/index.php');
         exit;
     }
 
-    header('Location: /FindIT/public/index.php');
+    header('Location: ' . appBasePath() . '/public/index.php');
     exit;
 }
