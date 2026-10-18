@@ -62,97 +62,89 @@ function escapeRegisterHtml(string $value): string
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 }
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Account | FindIT</title>
+<?php
 
-    <link rel="stylesheet" href="assets/vendor/bootstrap/css/bootstrap.min.css">
-    <link rel="stylesheet" href="assets/css/style.css">
-</head>
-<body class="bg-light">
+require_once dirname(__DIR__) . '/app/helpers/ui.php';
 
-<main class="container min-vh-100 d-flex align-items-center justify-content-center py-5">
-    <div class="card border-0 shadow-sm rounded-4 w-100" style="max-width: 520px;">
-        <div class="card-body p-4 p-md-5">
+fiHead('Create account | FindIT');
+fiPublicNav(null, 'register');
+?>
 
-            <div class="text-center mb-4">
-                <a href="index.php" class="text-decoration-none text-dark">
-                    <h2 class="fw-bold mb-2">FindIT</h2>
-                </a>
-                <p class="text-secondary mb-0">
-                    Create your student account to get started.
-                </p>
-            </div>
+<main class="fi-auth" id="main">
+    <div class="fi-auth-card fi-auth-card--wide">
 
-            <?php if ($errorMessage !== ''): ?>
-                <div class="alert alert-danger" role="alert">
-                    <?= escapeRegisterHtml($errorMessage) ?>
-                </div>
-            <?php endif; ?>
+        <div class="fi-auth-head">
+            <a href="index.php" class="fi-brand">FindIT<span>.</span></a>
+            <p>Create your student account to get started.</p>
+        </div>
 
-            <?php if ($successMessage !== ''): ?>
-                <div class="alert alert-success" role="alert">
-                    <?= escapeRegisterHtml($successMessage) ?>
+        <?php if ($errorMessage !== ''): ?>
+            <?php fiAlert('danger', $errorMessage); ?>
+        <?php endif; ?>
+
+        <?php if ($successMessage !== ''): ?>
+            <div class="alert alert-success fi-alert" role="status">
+                <span class="fi-alert-dot" aria-hidden="true"></span>
+                <div class="fi-alert-text">
+                    <?= fiE($successMessage) ?>
                     <a href="login.php" class="alert-link">Sign in here.</a>
                 </div>
-            <?php endif; ?>
+            </div>
+        <?php endif; ?>
 
-            <form method="POST" action="register.php">
-                <input
-                    type="hidden"
-                    name="csrf_token"
-                    value="<?= escapeRegisterHtml($csrfToken) ?>"
-                >
+        <form method="POST" action="register.php" class="needs-validation" novalidate>
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="<?= fiE($csrfToken) ?>">
 
-                <div class="mb-3">
-                    <label for="name" class="form-label">Full Name</label>
+            <div class="row g-3">
+                <div class="col-12">
+                    <label for="name" class="form-label">Full name</label>
                     <input
                         type="text"
                         class="form-control"
                         id="name"
                         name="name"
                         maxlength="50"
-                        value="<?= escapeRegisterHtml($formData['name']) ?>"
+                        value="<?= fiE($formData['name']) ?>"
                         placeholder="Enter your full name"
                         autocomplete="name"
-                        required
-                    >
+                        required>
+                    <div class="invalid-feedback">Please enter your full name.</div>
                 </div>
 
-                <div class="mb-3">
-                    <label for="email" class="form-label">Campus Email</label>
+                <div class="col-12">
+                    <label for="email" class="form-label">Campus email</label>
                     <input
                         type="email"
                         class="form-control"
                         id="email"
                         name="email"
                         maxlength="100"
-                        value="<?= escapeRegisterHtml($formData['email']) ?>"
+                        value="<?= fiE($formData['email']) ?>"
                         placeholder="you@example.com"
                         autocomplete="email"
-                        required
-                    >
+                        required>
+                    <div class="invalid-feedback">Please enter a valid email address.</div>
                 </div>
 
-                <div class="mb-3">
-                    <label for="phone" class="form-label">Phone Number</label>
+                <div class="col-12 col-sm-6">
+                    <label for="phone" class="form-label">Phone number</label>
                     <input
                         type="tel"
                         class="form-control"
                         id="phone"
                         name="phone"
                         maxlength="15"
-                        value="<?= escapeRegisterHtml($formData['phone']) ?>"
-                        placeholder="Enter your phone number"
+                        value="<?= fiE($formData['phone']) ?>"
+                        placeholder="08xxxxxxxxxx"
                         autocomplete="tel"
-                        required
-                    >
+                        required>
+                    <div class="invalid-feedback">Please enter your phone number.</div>
                 </div>
 
-                <div class="mb-3">
+                <div class="col-12 col-sm-6">
                     <label for="student_id" class="form-label">Student ID (NIM)</label>
                     <input
                         type="text"
@@ -160,14 +152,14 @@ function escapeRegisterHtml(string $value): string
                         id="student_id"
                         name="student_id"
                         maxlength="20"
-                        value="<?= escapeRegisterHtml($formData['student_id']) ?>"
-                        placeholder="Enter your student ID"
+                        value="<?= fiE($formData['student_id']) ?>"
+                        placeholder="Enter your NIM"
                         autocomplete="off"
-                        required
-                    >
+                        required>
+                    <div class="invalid-feedback">Please enter your student ID.</div>
                 </div>
 
-                <div class="mb-3">
+                <div class="col-12 col-sm-6">
                     <label for="password" class="form-label">Password</label>
                     <input
                         type="password"
@@ -177,46 +169,46 @@ function escapeRegisterHtml(string $value): string
                         minlength="8"
                         autocomplete="new-password"
                         placeholder="At least 8 characters"
-                        required
-                    >
+                        required>
+                    <div class="invalid-feedback">Use at least 8 characters.</div>
                 </div>
 
-                <div class="mb-4">
-                    <label for="confirm_password" class="form-label">
-                        Confirm Password
-                    </label>
+                <div class="col-12 col-sm-6">
+                    <label for="confirm_password" class="form-label">Confirm password</label>
                     <input
                         type="password"
                         class="form-control"
                         id="confirm_password"
                         name="confirm_password"
                         minlength="8"
+                        data-match="#password"
                         autocomplete="new-password"
-                        placeholder="Enter your password again"
-                        required
-                    >
+                        placeholder="Repeat your password"
+                        required>
+                    <div class="invalid-feedback">The passwords do not match.</div>
                 </div>
+            </div>
 
-                <button type="submit" class="btn btn-primary w-100 py-2">
-                    Create Account
-                </button>
-            </form>
+            <button
+                type="submit"
+                class="btn btn-primary w-100 mt-4"
+                data-loading-text="Creating account...">
+                Create account
+            </button>
+        </form>
 
-            <p class="text-center text-secondary mt-4 mb-0">
-                Already have an account?
-                <a href="login.php" class="text-decoration-none">Sign in</a>
-            </p>
+        <p class="fi-auth-foot">
+            Already have an account?
+            <a href="login.php">Sign in</a>
+        </p>
 
-            <p class="text-center mt-3 mb-0">
-                <a href="index.php" class="text-secondary small text-decoration-none">
-                    Back to homepage
-                </a>
-            </p>
-
-        </div>
+        <p class="fi-auth-foot">
+            <a href="index.php" class="small">&larr; Back to homepage</a>
+        </p>
     </div>
 </main>
 
-<script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<?php fiFooter(); ?>
+<?php fiScripts('assets'); ?>
 </body>
 </html>
