@@ -114,7 +114,7 @@ if ($claim && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Lock the selected claim to prevent simultaneous decisions.
                 $lockStmt = $pdo->prepare(
                     '
-                    SELECT id_claim, id_item, status_klaim
+                    SELECT id_claim, id_item, id_user_pengaju, status_klaim
                     FROM public.claim
                     WHERE id_claim = :claim_id
                     FOR UPDATE
@@ -213,6 +213,43 @@ if ($claim && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     );
                 }
 
+                // Prepare a notification for the student whose claim was reviewed.
+                $notificationTitle = $decision === 'approve'
+                    ? 'Claim Approved'
+                    : 'Claim Rejected';
+
+                $itemName = $claim['nama_barang'] ?? 'your reported item';
+
+                if ($decision === 'approve') {
+                    $notificationMessage = 'Your claim for "' . $itemName
+                        . '" has been approved. Please check your pickup details on the My Claims page.';
+                } else {
+                    $notificationMessage = 'Your claim for "' . $itemName
+                        . '" has been rejected. Admin note: ' . $adminNote;
+                }
+
+                // Save the notification in the same transaction as the claim decision.
+                $notificationStmt = $pdo->prepare(
+                    'INSERT INTO public.notification (
+                        id_user,
+                        id_claim,
+                        title,
+                        message
+                    ) VALUES (
+                        :user_id,
+                        :claim_id,
+                        :title,
+                        :message
+                    )'
+                );
+
+                $notificationStmt->execute([
+                    'user_id' => (int) $lockedClaim['id_user_pengaju'],
+                    'claim_id' => $claimId,
+                    'title' => $notificationTitle,
+                    'message' => $notificationMessage,
+                ]);
+
                 // Update the item and resolve competing claims only after approval.
                 if ($decision === 'approve') {
                     // Mark the item as claimed while it is still available.
@@ -238,8 +275,8 @@ if ($claim && $_SERVER['REQUEST_METHOD'] === 'POST') {
                         );
                     }
 
-                    // Reject other pending claims because this item has been claimed.
-                    // Exclude the claim that was just approved.
+                    // Reject other pending claims because this item has already been claimed.
+                    // RETURNING provides the claimants who need an automatic-rejection notification.
                     $rejectOtherClaimsStmt = $pdo->prepare(
                         '
                         UPDATE public.claim
@@ -252,6 +289,7 @@ if ($claim && $_SERVER['REQUEST_METHOD'] === 'POST') {
                         WHERE id_item = :item_id
                           AND id_claim <> :approved_claim_id
                           AND status_klaim = :pending_status
+                        RETURNING id_claim, id_user_pengaju
                         '
                     );
 
@@ -263,6 +301,18 @@ if ($claim && $_SERVER['REQUEST_METHOD'] === 'POST') {
                         'approved_claim_id' => $claimId,
                         'pending_status' => 'Menunggu Verifikasi',
                     ]);
+
+                    // Notify every student whose pending claim was automatically rejected.
+                    $rejectedClaims = $rejectOtherClaimsStmt->fetchAll();
+
+                    foreach ($rejectedClaims as $rejectedClaim) {
+                        $notificationStmt->execute([
+                            'user_id' => (int) $rejectedClaim['id_user_pengaju'],
+                            'claim_id' => (int) $rejectedClaim['id_claim'],
+                            'title' => 'Claim Rejected',
+                            'message' => 'Your claim has been rejected because this item has already been claimed by another student.',
+                        ]);
+                    }
                 }
 
                 // Commit only after all required updates have succeeded.
