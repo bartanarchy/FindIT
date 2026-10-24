@@ -103,17 +103,55 @@ if ($claim && $_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 $pdo->beginTransaction();
                 $lockStmt = $pdo->prepare(
-                    'SELECT id_claim, status_klaim FROM public.claim WHERE id_claim = :claim_id FOR UPDATE'
+                    'SELECT id_claim, id_item, status_klaim
+     FROM public.claim
+     WHERE id_claim = :claim_id
+     FOR UPDATE'
                 );
+
                 $lockStmt->execute(['claim_id' => $claimId]);
                 $lockedClaim = $lockStmt->fetch();
 
                 if (!$lockedClaim) {
                     throw new RuntimeException('Claim request not found.');
                 }
+
                 if ($lockedClaim['status_klaim'] !== 'Menunggu Verifikasi') {
                     throw new RuntimeException('This claim has already been reviewed and cannot be changed again.');
                 }
+
+                // Get the item ID linked to this claim.
+                $itemId = (int) ($lockedClaim['id_item'] ?? 0);
+
+                // Only check item availability when the admin approves a claim.
+                if ($decision === 'approve') {
+                    // Stop the approval if the claim has no linked item.
+                    if ($itemId < 1) {
+                        throw new RuntimeException(
+                            'This claim is not linked to an available item.'
+                        );
+                    }
+
+                    // Lock the item row to prevent conflicting updates during approval.
+                    $itemLockStmt = $pdo->prepare(
+                        'SELECT status_barang
+         FROM public.item
+         WHERE kode_laporan = :item_id
+         FOR UPDATE'
+                    );
+
+                    $itemLockStmt->execute(['item_id' => $itemId]);
+                    $lockedItem = $itemLockStmt->fetch();
+
+                    // Approve the claim only if the item is still marked as found.
+                    if (!$lockedItem || $lockedItem['status_barang'] !== 'Ditemukan') {
+                        throw new RuntimeException(
+                            'This item is no longer available for approval.'
+                        );
+                    }
+                }
+
+
 
                 if ($decision === 'approve') {
                     $newStatus = 'Disetujui';
@@ -150,7 +188,31 @@ if ($claim && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new RuntimeException('The claim was not updated. Reload the page and try again.');
                 }
 
+                // Mark the item as claimed only when the admin approves the claim.
+                if ($decision === 'approve') {
+                    $itemUpdateStmt = $pdo->prepare(
+                        'UPDATE public.item
+         SET status_barang = :item_status
+         WHERE kode_laporan = :item_id
+           AND status_barang = :current_status'
+                    );
+
+                    $itemUpdateStmt->execute([
+                        'item_status' => 'Diklaim',
+                        'item_id' => $itemId,
+                        'current_status' => 'Ditemukan',
+                    ]);
+
+                    // Roll back the transaction if the item status was not updated.
+                    if ($itemUpdateStmt->rowCount() !== 1) {
+                        throw new RuntimeException(
+                            'The item status could not be updated. Please try again.'
+                        );
+                    }
+                }
+
                 $pdo->commit();
+
                 header('Location: claim-detail.php?id=' . $claimId . '&updated=1');
                 exit;
             } catch (Throwable $e) {
@@ -479,4 +541,5 @@ fiAdminNav('claims');
 <?php fiFooter('Admin claim review'); ?>
 <?php fiScripts('../public/assets'); ?>
 </body>
+
 </html>
