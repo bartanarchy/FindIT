@@ -1743,4 +1743,150 @@ textarea.form-control {
 }
 
 
+/* Claim details — responsive layout refinement */
+.fi-main .fi-review {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 0.72fr);
+    align-items: start;
+    gap: 24px;
+}
+
+.fi-main .fi-review > div,
+.fi-main .fi-review > aside {
+    min-width: 0;
+}
+
+.fi-main .fi-review .fi-panel {
+    min-width: 0;
+    padding: clamp(18px, 2.5vw, 28px);
+    overflow-wrap: anywhere;
+}
+
+.fi-main .fi-review .fi-panel + .fi-panel {
+    margin-top: 20px;
+}
+
+.fi-main .fi-review .fi-panel-title {
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+.fi-main .fi-review .fi-compare {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.fi-main .fi-review .fi-compare-col {
+    min-width: 0;
+    padding: 18px;
+    border-radius: var(--fi-radius-md);
+    overflow-wrap: anywhere;
+}
+
+.fi-main .fi-review .fi-field-value {
+    overflow-wrap: anywhere;
+    word-break: normal;
+}
+
+.fi-main .fi-review .fi-sticky {
+    min-width: 0;
+    position: sticky;
+    top: 24px;
+}
+
+.fi-main .fi-review .fi-decision-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+}
+
+.fi-main .fi-review .fi-decision-actions .btn {
+    width: 100%;
+    min-height: 46px;
+    white-space: normal;
+}
+
+/* Tablet and mobile */
+@media (max-width: 991.98px) {
+    .fi-main .fi-review {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 20px;
+    }
+
+    .fi-main .fi-review .fi-sticky {
+        position: static;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .fi-main .fi-container {
+        width: calc(100% - 28px);
+    }
+
+    .fi-main .fi-review {
+        gap: 16px;
+    }
+
+    .fi-main .fi-review .fi-panel {
+        padding: 18px;
+        border-radius: var(--fi-radius-md);
+    }
+
+    .fi-main .fi-review .fi-panel + .fi-panel {
+        margin-top: 16px;
+    }
+
+    .fi-main .fi-review .fi-compare {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 12px;
+    }
+
+    .fi-main .fi-review .fi-compare-col {
+        padding: 16px;
+    }
+
+    .fi-main .fi-review .fi-compare-title {
+        font-size: 0.85rem;
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+    }
+
+    .fi-main .fi-review .fi-fields {
+        min-width: 0;
+    }
+
+    .fi-main .fi-review .fi-field {
+        min-width: 0;
+    }
+
+    .fi-main .fi-review form .form-control {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .fi-main .fi-review .fi-decision-actions {
+        gap: 12px;
+    }
+}
+
+
+/* Claim details — prevent the page heading from being clipped */
+@media (max-width: 767.98px) {
+    .fi-main {
+        padding-top: 28px;
+    }
+
+    .fi-main .fi-container {
+        padding-top: 8px;
+    }
+
+    .fi-main .fi-page-header {
+        margin-top: 0;
+        margin-bottom: 28px;
+    }
+}
+
+
+
 
