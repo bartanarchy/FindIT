@@ -1503,3 +1503,244 @@ textarea.form-control {
         transition-duration: 0.01ms !important;
     }
 }
+
+/* Manage Claims — editorial polish */
+.fi-main #claims-heading {
+    font-size: clamp(1.65rem, 3vw, 2.1rem);
+    font-weight: 800;
+    letter-spacing: -0.045em;
+}
+
+.fi-main .fi-toolbar {
+    padding: 20px;
+    gap: 16px;
+    background: #FFFFFF;
+    border-color: var(--fi-border);
+}
+
+.fi-main .fi-toolbar-field label {
+    margin-bottom: 8px;
+    font-size: 0.72rem;
+    letter-spacing: 0.07em;
+}
+
+.fi-main .fi-table-panel {
+    border-top: 1px solid var(--fi-border);
+    border-radius: 0 0 var(--fi-radius-lg) var(--fi-radius-lg);
+    box-shadow: var(--fi-shadow-sm);
+}
+
+.fi-main .fi-table thead th {
+    padding-block: 16px;
+    background: #F2F0E8;
+}
+
+.fi-main .fi-table tbody td {
+    padding-block: 18px;
+}
+
+.fi-main .fi-table tbody tr:not(:last-child) td {
+    border-bottom-color: #F0EDE5;
+}
+
+.fi-main .fi-table tbody tr:hover {
+    background: #FAF9F4;
+}
+
+.fi-main .fi-table .btn-outline-secondary {
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.fi-main .fi-table .btn-outline-secondary:hover {
+    transform: translateY(-1px);
+}
+
+@media (max-width: 767.98px) {
+    .fi-main .fi-toolbar {
+        padding: 14px;
+    }
+
+    .fi-main .fi-table-panel {
+        border-radius: var(--fi-radius-md);
+    }
+
+    .fi-main .fi-table tbody td {
+        padding-block: 9px;
+    }
+
+    .fi-main .fi-table tbody td[data-label="Action"] {
+        padding-top: 14px;
+    }
+
+    .fi-main .fi-table tbody td[data-label="Action"] .btn {
+        width: 100%;
+    }
+}
+
+
+/* Manage Claims — responsive layout refinement */
+@media (max-width: 767.98px) {
+    .fi-main .fi-section-head {
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .fi-main #claims-heading {
+        font-size: 1.35rem;
+        letter-spacing: -0.035em;
+    }
+
+    .fi-main .fi-toolbar {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 14px;
+        padding: 14px;
+    }
+
+    .fi-main .fi-toolbar-field {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .fi-main .fi-results-bar {
+        align-items: center;
+        gap: 10px;
+        padding: 12px 14px;
+    }
+
+    .fi-main .fi-results-bar p {
+        margin: 0;
+        font-size: 0.82rem;
+    }
+
+    .fi-main .fi-table-panel {
+        overflow: hidden;
+        border-radius: var(--fi-radius-md);
+    }
+
+    .fi-main .fi-table-wrap {
+        overflow: visible;
+    }
+
+    .fi-main .fi-table tbody tr {
+        display: block;
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--fi-border);
+        background: var(--fi-surface);
+    }
+
+    .fi-main .fi-table tbody tr:last-child {
+        border-bottom: 0;
+    }
+
+    .fi-main .fi-table tbody td {
+        display: grid;
+        grid-template-columns: minmax(88px, 0.8fr) minmax(0, 1.4fr);
+        align-items: start;
+        gap: 10px;
+        width: 100%;
+        padding: 8px 0;
+        border: 0;
+        text-align: right;
+        overflow-wrap: anywhere;
+    }
+
+    .fi-main .fi-table tbody td::before {
+        content: attr(data-label);
+        color: var(--fi-muted);
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        line-height: 1.5;
+        text-align: left;
+        text-transform: uppercase;
+    }
+
+    .fi-main .fi-table .fi-cell-name,
+    .fi-main .fi-table .fi-cell-meta {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .fi-main .fi-table tbody td[data-label="Action"] {
+        grid-template-columns: minmax(88px, 0.8fr) minmax(0, 1.4fr);
+        align-items: center;
+        padding-top: 12px;
+        margin-top: 4px;
+        border-top: 1px solid var(--fi-paper-2);
+    }
+
+    .fi-main .fi-table tbody td[data-label="Action"] .btn {
+        justify-self: end;
+        min-width: 110px;
+        max-width: 100%;
+    }
+}
+
+/* Keep claim codes readable on desktop too */
+@media (min-width: 768px) {
+    .fi-main .fi-table tbody td:first-child {
+        min-width: 155px;
+    }
+
+    .fi-main .fi-table tbody td:first-child .fi-cell-name {
+        overflow-wrap: anywhere;
+    }
+}
+
+
+/* Improve claim and item details on narrow screens */
+@media (max-width: 767.98px) {
+    .fi-main .fi-table tbody td[data-label="Claim"],
+    .fi-main .fi-table tbody td[data-label="Item"] {
+        grid-template-columns: 76px minmax(0, 1fr);
+        column-gap: 8px;
+    }
+
+    .fi-main .fi-table tbody td[data-label="Claim"] .fi-cell-name,
+    .fi-main .fi-table tbody td[data-label="Item"] .fi-cell-name {
+        min-width: 0;
+        font-size: 0.88rem;
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+    }
+
+    .fi-main .fi-table tbody td[data-label="Claim"] .fi-cell-meta,
+    .fi-main .fi-table tbody td[data-label="Item"] .fi-cell-meta {
+        grid-column: 2;
+        font-size: 0.76rem;
+        line-height: 1.45;
+        text-align: right;
+    }
+}
+
+
+/* Keep student identity together on mobile */
+@media (max-width: 767.98px) {
+    .fi-main .fi-table tbody td[data-label="Student"] {
+        grid-template-columns: 76px minmax(0, 1fr);
+        align-items: start;
+        column-gap: 8px;
+    }
+
+    .fi-main .fi-table tbody td[data-label="Student"] .fi-cell-name,
+    .fi-main .fi-table tbody td[data-label="Student"] .fi-cell-meta {
+        grid-column: 2;
+        text-align: right;
+        overflow-wrap: anywhere;
+    }
+
+    .fi-main .fi-table tbody td[data-label="Student"] .fi-cell-name {
+        line-height: 1.4;
+    }
+
+    .fi-main .fi-table tbody td[data-label="Student"] .fi-cell-meta {
+        margin-top: -4px;
+        font-size: 0.76rem;
+        line-height: 1.45;
+    }
+}
+
+
+
