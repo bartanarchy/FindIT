@@ -114,7 +114,7 @@ function fiPublicNav(?array $user, string $active = ''): void
         // Step 2: Add the unread number beside Notifications only when the count is above zero.
         $notificationLabel = 'Notifications';
         if ($unreadCount > 0) {
-            $notificationLabel .= ' <span class="badge text-bg-primary">'
+            $notificationLabel .= ' <span class="fi-nav-count">'
                 . $unreadCount . '</span>';
         }
         // Step 3: Add the Notifications link and highlight it on the notifications page.
