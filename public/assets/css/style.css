@@ -1887,6 +1887,21 @@ textarea.form-control {
     }
 }
 
-
-
-
+/* Alert count in the navigation bar */
+.fi-nav-count {
+    display: inline-flex;          
+    align-items: center;           
+    justify-content: center;       
+    vertical-align: middle;       
+    position: relative;           
+    top: -1px;                     
+    min-width: 1.1rem;            
+    height: 1.1rem;                
+    padding: 0 6px;                
+    color: #fff;                 
+    font-size: 0.68rem;            
+    font-weight: 700;              
+    line-height: 1;                
+    background: #B9473C;           
+    border-radius: 999px;          
+}
