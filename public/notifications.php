@@ -74,6 +74,33 @@ $unreadCount = count(array_filter(
     static fn(array $notification): bool => !$notification['is_read']
 ));
 
+// Opening this page counts as reading: mark the notifications that were just loaded as read.
+$unreadIds = [];
+foreach ($notifications as $notification) {
+    if (!$notification['is_read']) {
+        $unreadIds[] = (int) $notification['id_notification'];
+    }
+}
+
+if ($unreadIds !== []) {
+    try {
+        // One "?" placeholder for each unread notification ID.
+        $placeholders = implode(',', array_fill(0, count($unreadIds), '?'));
+
+        $markStmt = $pdo->prepare(
+            'UPDATE public.notification
+            SET is_read = TRUE
+            WHERE id_user = ?
+                AND id_notification IN (' . $placeholders . ')'
+        );
+
+        $markStmt->execute(array_merge([$userId], $unreadIds));
+    } catch (PDOException $e) {
+        // The list can still be shown even if marking fails.
+        error_log('[FindIT] Failed to mark notifications as read: ' . $e->getMessage());
+    }
+}
+
 fiHead('Notifications | FindIT');
 fiPublicNav($user, 'notifications');
 
