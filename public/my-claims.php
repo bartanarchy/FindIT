@@ -57,10 +57,10 @@ $totalClaims = count($claims);
 function getClaimStatusClass(?string $status): string
 {
     switch ($status) {
-        case 'Disetujui':
+        case 'Approved':
             return 'my-claim-status--approved';
 
-        case 'Ditolak':
+        case 'Rejected':
             return 'my-claim-status--rejected';
 
         default:
@@ -113,7 +113,7 @@ fiPublicNav(currentUser(), 'claims');
                     <?php foreach ($claims as $claim): ?>
                         <?php
                         $status = (string) ($claim['status_klaim'] ?? '');
-                        $isApproved = $status === 'Disetujui';
+                        $isApproved = $status === 'Approved';
                         $pickupCode = (string) ($claim['kode_pengambilan'] ?? '');
                         ?>
                         <article class="fi-claim-card">
@@ -182,7 +182,7 @@ fiPublicNav(currentUser(), 'claims');
                                     </p>
                                 </section>
 
-                            <?php elseif ($status === 'Ditolak'): ?>
+                            <?php elseif ($status === 'Rejected'): ?>
 
                                 <div class="alert alert-danger fi-alert fi-note" role="status">
                                     <span class="fi-alert-dot" aria-hidden="true"></span>
