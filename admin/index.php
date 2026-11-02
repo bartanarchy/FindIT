@@ -31,9 +31,9 @@ try {
     $row = $pdo->query("
         SELECT
             (SELECT COUNT(*) FROM public.item) AS items,
-            (SELECT COUNT(*) FROM public.item WHERE status_barang = 'Ditemukan') AS available,
-            (SELECT COUNT(*) FROM public.claim WHERE status_klaim = 'Menunggu Verifikasi') AS pending,
-            (SELECT COUNT(*) FROM public.claim WHERE status_klaim = 'Disetujui') AS approved
+              (SELECT COUNT(*) FROM public.item WHERE status_barang = 'Found') AS available,
+            (SELECT COUNT(*) FROM public.claim WHERE status_klaim = 'Pending Verification') AS pending,
+            (SELECT COUNT(*) FROM public.claim WHERE status_klaim = 'Approved') AS approved
     ")->fetch();
 
     if ($row) {
