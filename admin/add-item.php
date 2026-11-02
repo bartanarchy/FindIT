@@ -189,7 +189,7 @@ try {
                         'distinctive_features' => $distinctiveFeatures !== ''
                             ? $distinctiveFeatures
                             : null,
-                        'status' => 'Ditemukan'
+                        'status' => 'Found' # Change language 
                     ]);
 
                     // Return to the inventory after creating the report.
