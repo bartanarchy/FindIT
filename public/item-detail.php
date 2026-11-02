@@ -70,7 +70,7 @@ $viewer = currentUser();
 $pageTitle = $item
     ? $item['nama_barang'] . ' - FindIT'
     : 'Item Not Found - FindIT';
-$isAvailable = $item && $item['status_barang'] === 'Ditemukan';
+$isAvailable = $item && $item['status_barang'] === 'Found';
 
 fiHead($pageTitle);
 fiPublicNav($viewer, 'home');
