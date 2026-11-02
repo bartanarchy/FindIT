@@ -129,7 +129,7 @@ if ($claim && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 // Only pending claims can receive an admin decision.
-                if ($lockedClaim['status_klaim'] !== 'Menunggu Verifikasi') {
+                if ($lockedClaim['status_klaim'] !== 'Pending Verification') {
                     throw new RuntimeException(
                         'This claim has already been reviewed and cannot be changed again.'
                     );
@@ -162,7 +162,7 @@ if ($claim && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     // An item can only be claimed while it is marked as found.
                     if (
                         !$lockedItem
-                        || $lockedItem['status_barang'] !== 'Ditemukan'
+                        || $lockedItem['status_barang'] !== 'Found'
                     ) {
                         throw new RuntimeException(
                             'This item is no longer available for approval.'
@@ -172,11 +172,11 @@ if ($claim && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 // Prepare the decision details for the selected claim.
                 if ($decision === 'approve') {
-                    $newStatus = 'Disetujui';
+                    $newStatus = 'Approved';
                     $pickupCode = 'PICK-' . strtoupper(bin2hex(random_bytes(4)));
                     $savedPickupLocation = $pickupLocation;
                 } else {
-                    $newStatus = 'Ditolak';
+                    $newStatus = 'Rejected';
                     $pickupCode = null;
                     $savedPickupLocation = null;
                 }
@@ -203,7 +203,7 @@ if ($claim && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     'pickup_code' => $pickupCode,
                     'pickup_location' => $savedPickupLocation,
                     'claim_id' => $claimId,
-                    'pending_status' => 'Menunggu Verifikasi',
+                    'pending_status' => 'Pending Verification',
                 ]);
 
                 // Stop the transaction if the selected claim was not updated.
@@ -263,9 +263,9 @@ if ($claim && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     );
 
                     $itemUpdateStmt->execute([
-                        'item_status' => 'Diklaim',
+                        'item_status' => 'Claimed',
                         'item_id' => $itemId,
-                        'current_status' => 'Ditemukan',
+                        'current_status' => 'Found',
                     ]);
 
                     // Roll back everything if the item status could not be changed.
@@ -294,12 +294,12 @@ if ($claim && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     );
 
                     $rejectOtherClaimsStmt->execute([
-                        'rejected_status' => 'Ditolak',
+                        'rejected_status' => 'Rejected',
                         'admin_note' => 'This item has already been claimed by another student.',
                         'admin_id' => $adminId,
                         'item_id' => $itemId,
                         'approved_claim_id' => $claimId,
-                        'pending_status' => 'Menunggu Verifikasi',
+                        'pending_status' => 'Pending Verification',
                     ]);
 
                     // Notify every student whose pending claim was automatically rejected.
@@ -362,7 +362,7 @@ if (isset($_GET['updated']) && $_GET['updated'] === '1') {
 require_once dirname(__DIR__) . '/app/helpers/ui.php';
 
 $isPending = $claim
-    && ($claim['status_klaim'] ?? '') === 'Menunggu Verifikasi';
+    && ($claim['status_klaim'] ?? '') === 'Pending Verification';
 
 fiHead('Claim details | FindIT Admin', '../public/assets');
 fiAdminNav('claims');
