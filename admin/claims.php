@@ -60,7 +60,7 @@ require_once dirname(__DIR__) . '/app/helpers/ui.php';
 $pendingCount = 0;
 
 foreach ($claims as $row) {
-    if (($row['status_klaim'] ?? '') === 'Menunggu Verifikasi') {
+    if (($row['status_klaim'] ?? '') === 'Pending Verification') {
         $pendingCount++;
     }
 }
