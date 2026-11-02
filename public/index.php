@@ -22,7 +22,7 @@ try {
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute([
-        'status' => 'Ditemukan',
+        'status' => 'Found',
     ]);
 
     $items = $stmt->fetchAll();
