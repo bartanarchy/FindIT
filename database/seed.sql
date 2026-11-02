@@ -34,3 +34,25 @@ WHERE NOT EXISTS (
     WHERE LOWER(email_admin) = LOWER('findit@gmail.com')
 );
 
+-- add this query for change status indonesian became english 
+
+BEGIN;
+
+UPDATE public.item
+SET status_barang = CASE status_barang
+    WHEN 'Ditemukan' THEN 'Found'
+    WHEN 'Diklaim'   THEN 'Claimed'
+    ELSE status_barang
+END
+WHERE status_barang IN ('Ditemukan', 'Diklaim');
+
+UPDATE public.claim
+SET status_klaim = CASE status_klaim
+    WHEN 'Menunggu Verifikasi' THEN 'Pending Verification'
+    WHEN 'Disetujui'           THEN 'Approved'
+    WHEN 'Ditolak'             THEN 'Rejected'
+    ELSE status_klaim
+END
+WHERE status_klaim IN ('Menunggu Verifikasi', 'Disetujui', 'Ditolak');
+
+COMMIT;
