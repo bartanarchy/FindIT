@@ -153,7 +153,7 @@ try {
                             ? $generalFeatures
                             : null,
                         'distinctive_features' => $distinctiveFeatures,
-                        'status' => 'Ditemukan'
+                        'status' => 'Found'
                     ]);
 
                     // redirect after saving to avoid duplicate submissions.
