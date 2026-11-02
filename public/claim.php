@@ -123,7 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Do not accept claims for items that are no longer available.
                 if (
                     !$lockedItem ||
-                    $lockedItem['status_barang'] !== 'Ditemukan'
+                    $lockedItem['status_barang'] !== 'Found'
                 ) {
                     throw new RuntimeException(
                         'This item is no longer available for claims.'
@@ -144,7 +144,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $duplicateStmt->execute([
                     'item_id' => $itemId,
                     'user_id' => $userId,
-                    'claim_status' => 'Menunggu Verifikasi',
+                    'claim_status' => 'Pending Verification',
                 ]);
 
                 if ($duplicateStmt->fetch()) {
@@ -185,7 +185,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'lost_location' => $formData['lokasi_kehilangan'],
                         'last_seen' => $formData['terakhir_di_lihat'],
                         'distinctive_features' => $formData['ciri_khusus_claim'],
-                        'claim_status' => 'Menunggu Verifikasi',
+                        'claim_status' => 'Pending Verification',
                     ]);
 
                     // Save the claim before redirecting.
@@ -297,7 +297,7 @@ fiPublicNav(currentUser(), 'home');
                     </a>
                 </div>
 
-            <?php elseif ($item['status_barang'] !== 'Ditemukan'): ?>
+            <?php elseif ($item['status_barang'] !== 'Found'): ?>
 
                 <?php
                 fiAlert(
