@@ -1,4 +1,3 @@
-
 -- Create the notification table for student claim updates.
 CREATE TABLE IF NOT EXISTS public.notification (
     id_notification BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
