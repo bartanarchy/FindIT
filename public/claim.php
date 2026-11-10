@@ -36,6 +36,7 @@ try {
             i.detail_lokasi,
             i.tanggal_ditemukan,
             i.status_barang,
+            i.id_user_pelapor,
             c.name_category
         FROM public.item AS i
         LEFT JOIN public.category AS c
@@ -59,6 +60,12 @@ try {
     exit('Unable to load this item right now. Please try again later.');
 }
 
+// A student must not claim an item that they reported themselves.
+$currentUserId = (int) (currentUser()['id'] ?? 0);
+$isOwnReport = $currentUserId > 0
+    && (int) ($item['id_user_pelapor'] ?? 0) === $currentUserId;
+
+
 // Store form values so students do not have to retype them after an error.
 $formData = [
     'lokasi_kehilangan' => '',
@@ -67,7 +74,10 @@ $formData = [
 ];
 
 // Process the claim form.
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwnReport) {
+    http_response_code(403);
+    $errorMessage = 'You cannot claim an item that you reported yourself.';
+} elseif($_SERVER['REQUEST_METHOD'] === 'POST') {
     foreach ($formData as $field => $defaultValue) {
         $submittedValue = $_POST[$field] ?? '';
 
@@ -107,7 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 // Lock the item row and check its current status.
                 $itemLockStmt = $pdo->prepare(
-                    'SELECT status_barang
+                    'SELECT status_barang,id_user_pelapor
                      FROM public.item
                      WHERE kode_laporan = :item_id
                      FOR UPDATE'
@@ -126,6 +136,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ) {
                     throw new RuntimeException(
                         'This item is no longer available for claims.'
+                    );
+                }
+                     // Re-check on the locked row: the reporter cannot claim their own report.
+                if ((int) $lockedItem['id_user_pelapor'] === $userId) {
+                    throw new RuntimeException(
+                        'You cannot claim an item that you reported yourself.'
                     );
                 }
 
@@ -295,6 +311,22 @@ fiPublicNav(currentUser(), 'home');
                         Back to found items
                     </a>
                 </div>
+
+                
+        <!-- update add warnig reported  -->
+                <?php elseif ($isOwnReport): ?>
+
+                <?php
+                fiAlert(
+                    'warning',
+                    'You reported this item as found, so you cannot claim it yourself. '
+                    . 'Only the real owner can submit a claim.'
+                );
+                ?>
+
+                <a href="index.php" class="btn btn-outline-secondary">
+                    Back to found items
+                </a>
 
             <?php elseif ($item['status_barang'] !== 'Found'): ?>
 
