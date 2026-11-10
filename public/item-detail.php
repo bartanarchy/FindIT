@@ -19,6 +19,7 @@ try {
             i.tanggal_ditemukan,
             i.ciri_umum,
             i.status_barang,
+            i.id_user_pelapor,
             c.name_category
         FROM public.item AS i
         INNER JOIN public.category AS c
@@ -72,6 +73,13 @@ $pageTitle = $item
     : 'Item Not Found - FindIT';
 $isAvailable = $item && $item['status_barang'] === 'Found';
 
+// The student who reported this item cannot claim it.
+$isOwnReport = $item
+    && $viewer
+    && (int) $viewer['id'] === (int) $item['id_user_pelapor']
+    && $viewer['role'] === 'student';
+
+    
 fiHead($pageTitle);
 fiPublicNav($viewer, 'home');
 ?>
@@ -143,10 +151,18 @@ fiPublicNav($viewer, 'home');
 
                 <aside class="col-12 col-lg-4">
                     <div class="fi-panel fi-sticky">
-                        <p class="fi-panel-kicker">Claim process</p>
+                    <p class="fi-panel-kicker">Claim process</p>
                         <h2 class="h5 mb-2">Is this your item?</h2>
-
-                        <?php if ($isAvailable): ?>
+                        
+                             <?php if ($isOwnReport): ?>
+                            <p class="text-secondary mb-3">
+                                You reported this item as found, so you cannot claim it.
+                                Only the real owner can submit a claim.
+                            </p>
+                            <a href="index.php" class="btn btn-outline-secondary w-100">
+                                Browse other items
+                            </a>
+                        <?php elseif ($isAvailable): ?>
                             <p class="text-secondary">
                                 If you believe this item belongs to you, continue to the claim
                                 form. An admin will verify your answers before pickup.
