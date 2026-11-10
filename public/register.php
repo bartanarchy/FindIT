@@ -3,6 +3,7 @@
 require_once dirname(__DIR__) . '/app/controllers/AuthController.php';
 require_once dirname(__DIR__) . '/app/helpers/auth.php';
 require_once dirname(__DIR__) . '/app/helpers/csrf.php';
+require_once dirname(__DIR__) . '/app/helpers/captcha.php';
 
 // if someone is already logged in, they don't need to register again.
 redirectLoggedInUser();
@@ -27,7 +28,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $formData['student_id'] = trim($_POST['student_id'] ?? '');
 
     if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
-        $errorMessage = 'Your session has expired. Please refresh the page and try again.';
+    $errorMessage = 'Your session has expired. Please refresh the page and try again.';
+
+    // The reCAPTCHA token is sent by the user's browser when they submit the form.
+    // Google sends a token to the user's browser, which is then sent back to us when the form is submitted.
+    } elseif (!verifyRecaptcha($_POST['g-recaptcha-response'] ?? '')) {
+    $errorMessage = 'Please confirm that you are not a robot.';
+    
     } else {
         // The controller handles validation, password hashing, and database insertion.
         $result = $authController->register([
@@ -188,9 +195,16 @@ fiPublicNav(null, 'register');
                 </div>
             </div>
 
+            <?php  ?>
+            <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+
+            <?php  ?>
+            <div style="display: flex; justify-content: center; margin-top: 1rem;">
+                <div class="g-recaptcha" data-sitekey="<?= fiE(RECAPTCHA_SITE_KEY) ?>"></div>
+            </div>
             <button
                 type="submit"
-                class="btn btn-primary w-100 mt-4"
+                class="btn btn-primary w-100 mt-3"
                 data-loading-text="Creating account...">
                 Create account
             </button>
