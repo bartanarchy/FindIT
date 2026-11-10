@@ -149,7 +149,7 @@ if ($claim && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Lock the item so another transaction cannot change its status concurrently.
                     $itemLockStmt = $pdo->prepare(
                         '
-                        SELECT status_barang
+                        SELECT status_barang, id_user_pelapor
                         FROM public.item
                         WHERE kode_laporan = :item_id
                         FOR UPDATE
@@ -158,6 +158,19 @@ if ($claim && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     $itemLockStmt->execute(['item_id' => $itemId]);
                     $lockedItem = $itemLockStmt->fetch();
+
+                    // (sheva)
+                    // Safety net: never approve a claim made by the item's own reporter.
+                    if (
+                        $lockedItem
+                        && (int) $lockedItem['id_user_pelapor']
+                            === (int) $lockedClaim['id_user_pengaju']
+                    ) {
+                        throw new RuntimeException(
+                            'This claim cannot be approved because the claimant reported this item. '
+                            . 'Please reject it.'
+                        );
+                    }
 
                     // An item can only be claimed while it is marked as found.
                     if (
