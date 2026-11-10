@@ -1,4 +1,3 @@
-
 <?php
 
 // We start the session because the form token is stored in the session.
