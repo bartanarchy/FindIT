@@ -29,6 +29,11 @@ $dbName = $env['DB_NAME'] ?? 'FindIT';
 $dbUser = $env['DB_USER'] ?? 'postgres';
 $dbPass = $env['DB_PASS'] ?? '1';
 
+// reCAPTCHA key is taken from .env file.
+// if the keys are not set, they will default to empty strings.
+define('RECAPTCHA_SITE_KEY', $env['RECAPTCHA_SITE_KEY'] ?? '');
+define('RECAPTCHA_SECRET_KEY', $env['RECAPTCHA_SECRET_KEY'] ?? '');
+
 // Validate the configuration before attempting to connect.
 if (
     $dbHost === '' ||
