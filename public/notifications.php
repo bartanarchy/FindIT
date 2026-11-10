@@ -43,6 +43,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'user_id' => $userId,
             ]);
 
+            // keep the encrypted backup in step with the new read status.
+            if ($updateStmt->rowCount() > 0) {
+                Backup::record($pdo, 'notification', $notificationId, 'update');
+            }
+
             // Redirect after saving to prevent the form from being submitted again.
             header('Location: notifications.php');
             exit;
@@ -62,7 +67,7 @@ try {
          ORDER BY created_at DESC, id_notification DESC'
     );
     $notificationStmt->execute(['user_id' => $userId]);
-    $notifications = $notificationStmt->fetchAll();
+    $notifications = Crypto::decryptRows($notificationStmt->fetchAll());
 } catch (PDOException $e) {
     error_log('[FindIT] Failed to load notifications: ' . $e->getMessage());
     $errorMessage = 'Unable to load notifications. Please try again later.';
@@ -95,6 +100,9 @@ if ($unreadIds !== []) {
         );
 
         $markStmt->execute(array_merge([$userId], $unreadIds));
+
+        // keep the encrypted backup in step with the new read status.
+        Backup::recordMany($pdo, 'notification', $unreadIds, 'update');
     } catch (PDOException $e) {
         // The list can still be shown even if marking fails.
         error_log('[FindIT] Failed to mark notifications as read: ' . $e->getMessage());

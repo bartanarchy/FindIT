@@ -45,7 +45,7 @@ try {
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute(['user_id' => $userId]);
-    $claims = $stmt->fetchAll();
+    $claims = Crypto::decryptRows($stmt->fetchAll());
 } catch (PDOException $e) {
     error_log('[FindIT] Failed to load student claims: ' . $e->getMessage());
     $errorMessage = 'Unable to load your claim history. Please try again later.';

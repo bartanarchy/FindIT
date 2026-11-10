@@ -25,7 +25,8 @@ try {
         'status' => 'Found',
     ]);
 
-    $items = $stmt->fetchAll();
+    // item text is stored encrypted; decrypt it for display.
+    $items = Crypto::decryptRows($stmt->fetchAll());
 } catch (PDOException $e) {
     // Keep database details in the server log.
     error_log('[FindIT] Failed to retrieve items: ' . $e->getMessage());

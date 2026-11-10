@@ -52,6 +52,7 @@ try {
 
     $itemStmt->execute(['item_id' => $itemId]);
     $item = $itemStmt->fetch();
+    $item = $item ? Crypto::decryptRow($item) : $item;
 
     if (!$item) {
         http_response_code(404);
@@ -135,18 +136,22 @@ try {
                     );
 
                     $updateStmt->execute([
-                        'name' => $name,
+                        // item text is stored encrypted.
+                        'name' => Crypto::protect('nama_barang', $name),
                         'category_id' => $categoryId,
-                        'location' => $location,
+                        'location' => Crypto::protect('detail_lokasi', $location),
                         'date_found' => $dateFound,
                         'general_features' => $generalFeatures !== ''
-                            ? $generalFeatures
+                            ? Crypto::protect('ciri_umum', $generalFeatures)
                             : null,
                         'distinctive_features' => $distinctiveFeatures !== ''
-                            ? $distinctiveFeatures
+                            ? Crypto::protect('ciri_khusus', $distinctiveFeatures)
                             : null,
                         'item_id' => $itemId
                     ]);
+
+                    // copy the updated report into the encrypted backup.
+                    Backup::record($pdo, 'item', $itemId, 'update');
 
                     // Return to the inventory after saving.
                     header('Location: items.php?updated=1');

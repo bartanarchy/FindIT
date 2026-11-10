@@ -63,6 +63,9 @@ FindIT/
 │   │   └── ItemController.php
 │   ├── helpers/
 │   │   ├── auth.php
+│   │   ├── backup.php
+│   │   ├── campus_email.php
+│   │   ├── crypto.php
 │   │   └── csrf.php
 │   └── models/
 │       ├── Claim.php
@@ -71,7 +74,10 @@ FindIT/
 ├── config/
 │   └── config.php
 ├── database/
-│   └── schema.sql
+│   ├── schema.sql
+│   ├── migrations/
+│   └── hardening/
+├── scripts/            (key, migration, backup, restore: command line only)
 ├── public/
 │   ├── assets/
 │   │   ├── css/
@@ -111,6 +117,71 @@ The database relationships connect users, categories, locations, items, administ
 The database schema is documented in `database/schema.sql`.
 
 **Important:** The database has already been created in the local development environment. Do not execute the schema file again against the existing database without checking whether the tables already exist.
+
+## Security: campus-only accounts, encryption and backup
+
+### Campus-only accounts
+
+Registration and student login only accept `NIM@student.polinema.ac.id` (digits before the `@`).
+The rule is enforced on the server (`app/helpers/campus_email.php`), not just in the form.
+Administrator accounts are created in the `admin` table, not through registration.
+
+> The rule checks the email *format*. It does not prove the person owns that mailbox.
+> Email verification (a confirmation link or code) is the next step if that is needed.
+
+### Encrypted database
+
+Sensitive columns are encrypted by PHP (AES-256-GCM) before they are saved, so anyone reading the
+database directly (pgAdmin, a stolen dump, SQL injection) only sees `enc:v1:...` text.
+
+| Table | Encrypted columns |
+| --- | --- |
+| `"User"` | `email_kampus`, `name_user`, `no_telp`, `id_nim` (password is a bcrypt hash) |
+| `item` | `nama_barang`, `detail_lokasi`, `ciri_umum`, `ciri_khusus` |
+| `claim` | `lokasi_kehilangan`, `terakhir_di_lihat`, `ciri_khusus_claim`, `catatan_admin`, `kode_pengambilan`, `lokasi_pengambilan` |
+| `notification` | `title`, `message` |
+
+Email and NIM are looked up through a *blind index* (`email_bidx`, `nim_bidx`: a keyed hash), so login
+and "already registered" checks work without decrypting anything.
+
+The key is `APP_ENC_KEY` in `.env`. **Keep an offline copy (password manager / USB). If it is lost,
+the encrypted data and the backups cannot be recovered.** Never commit `.env`.
+
+### Encrypted backup (outside the database)
+
+* **Journal** (`storage/backup/journal.log`): every write (registration, item report, claim, admin
+  decision, notification) is also saved here, encrypted, append-only and hash-chained.
+* **Snapshots** (`storage/backup/snapshot-*.fbk`): a full encrypted copy of every table.
+* A restore = newest snapshot + the journal entries after it, so it works even if the database was dropped.
+* Set `BACKUP_PATH` in `.env` to keep the backup on another drive or a synced folder.
+
+### First-time setup (existing database)
+
+```bash
+php scripts/generate-key.php --write     # creates APP_ENC_KEY in .env, then copy it somewhere safe
+php scripts/migrate-security.php         # updates tables, encrypts existing rows, first snapshot
+php scripts/verify-backup.php            # confirms the backup opens and the journal is intact
+```
+
+Take a normal database backup in pgAdmin before running `migrate-security.php`.
+Existing accounts that do not use `NIM@student.polinema.ac.id` are listed by the script and can no longer sign in.
+
+### Everyday commands
+
+```bash
+php scripts/backup-snapshot.php          # full snapshot; schedule daily (Windows Task Scheduler / cron)
+php scripts/verify-backup.php            # check backup health
+php scripts/restore.php --dry-run        # preview a restore
+php scripts/restore.php                  # restore after data loss (create an empty FindIT database first)
+```
+
+Copy the backup folder to a second place regularly. A backup on the same disk as the database does not
+protect against losing the whole machine.
+
+### Optional: restricted database account
+
+`database/hardening/least-privilege.sql` creates `findit_app`, which can read, insert and update but not
+delete, truncate or drop. Run the app with it (`DB_USER=findit_app`) and keep `postgres` for maintenance and restore.
 
 ## Getting Started
 
@@ -153,6 +224,8 @@ DB_PORT=5432
 DB_NAME=FindIT
 DB_USER=postgres
 DB_PASS=your_local_database_password
+APP_ENC_KEY=            # generate with: php scripts/generate-key.php --write
+BACKUP_PATH=            # optional: folder for encrypted backups
 ```
 
 Replace the example password with your local PostgreSQL password.

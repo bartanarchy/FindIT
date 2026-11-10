@@ -34,6 +34,7 @@ try {
     ]);
 
     $item = $stmt->fetch();
+    $item = $item ? Crypto::decryptRow($item) : $item;
 } catch (PDOException $e) {
     error_log('[FindIT] Failed to retrieve item details: ' . $e->getMessage());
     http_response_code(500);

@@ -2,3 +2,4 @@
 .env
 /storage/logs/
 /public/uploads/
+/storage/backup/

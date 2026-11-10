@@ -59,6 +59,7 @@ if (!$claimId || $claimId < 1) {
         $stmt = $pdo->prepare($sql);
         $stmt->execute(['claim_id' => $claimId]);
         $claim = $stmt->fetch() ?: null;
+        $claim = $claim ? Crypto::decryptRow($claim) : null;
 
         if (!$claim) {
             http_response_code(404);
@@ -211,10 +212,10 @@ if ($claim && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $updateStmt->execute([
                     'status' => $newStatus,
-                    'admin_note' => $adminNote,
+                    'admin_note' => Crypto::protect('catatan_admin', $adminNote),
                     'admin_id' => $adminId,
-                    'pickup_code' => $pickupCode,
-                    'pickup_location' => $savedPickupLocation,
+                    'pickup_code' => Crypto::protect('kode_pengambilan', $pickupCode),
+                    'pickup_location' => Crypto::protect('lokasi_pengambilan', $savedPickupLocation),
                     'claim_id' => $claimId,
                     'pending_status' => 'Pending Verification',
                 ]);
@@ -253,15 +254,21 @@ if ($claim && $_SERVER['REQUEST_METHOD'] === 'POST') {
                         :claim_id,
                         :title,
                         :message
-                    )'
+                    )
+                    RETURNING id_notification'
                 );
+
+                // ids of everything saved in this decision, for the encrypted backup.
+                $backupClaimIds = [$claimId];
+                $backupNotificationIds = [];
 
                 $notificationStmt->execute([
                     'user_id' => (int) $lockedClaim['id_user_pengaju'],
                     'claim_id' => $claimId,
-                    'title' => $notificationTitle,
-                    'message' => $notificationMessage,
+                    'title' => Crypto::protect('title', $notificationTitle),
+                    'message' => Crypto::protect('message', $notificationMessage),
                 ]);
+                $backupNotificationIds[] = (int) $notificationStmt->fetchColumn();
 
                 // Update the item and resolve competing claims only after approval.
                 if ($decision === 'approve') {
@@ -308,7 +315,10 @@ if ($claim && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     $rejectOtherClaimsStmt->execute([
                         'rejected_status' => 'Rejected',
-                        'admin_note' => 'This item has already been claimed by another student.',
+                        'admin_note' => Crypto::protect(
+                            'catatan_admin',
+                            'This item has already been claimed by another student.'
+                        ),
                         'admin_id' => $adminId,
                         'item_id' => $itemId,
                         'approved_claim_id' => $claimId,
@@ -322,14 +332,26 @@ if ($claim && $_SERVER['REQUEST_METHOD'] === 'POST') {
                         $notificationStmt->execute([
                             'user_id' => (int) $rejectedClaim['id_user_pengaju'],
                             'claim_id' => (int) $rejectedClaim['id_claim'],
-                            'title' => 'Claim Rejected',
-                            'message' => 'Your claim has been rejected because this item has already been claimed by another student.',
+                            'title' => Crypto::protect('title', 'Claim Rejected'),
+                            'message' => Crypto::protect(
+                                'message',
+                                'Your claim has been rejected because this item has already been claimed by another student.'
+                            ),
                         ]);
+                        $backupClaimIds[] = (int) $rejectedClaim['id_claim'];
+                        $backupNotificationIds[] = (int) $notificationStmt->fetchColumn();
                     }
                 }
 
                 // Commit only after all required updates have succeeded.
                 $pdo->commit();
+
+                // copy every row this decision changed into the encrypted backup.
+                Backup::recordMany($pdo, 'claim', $backupClaimIds, 'update');
+                Backup::recordMany($pdo, 'notification', $backupNotificationIds, 'insert');
+                if ($decision === 'approve') {
+                    Backup::record($pdo, 'item', $itemId, 'update');
+                }
 
                 // Redirect to prevent the form from being submitted again on refresh.
                 header(
@@ -358,6 +380,7 @@ if ($claimId && $errorMessage === '') {
         $stmt = $pdo->prepare($sql);
         $stmt->execute(['claim_id' => $claimId]);
         $claim = $stmt->fetch() ?: null;
+        $claim = $claim ? Crypto::decryptRow($claim) : null;
     } catch (PDOException $e) {
         error_log('[FindIT] Failed to refresh claim details: ' . $e->getMessage());
 

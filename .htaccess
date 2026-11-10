@@ -1,0 +1,9 @@
+# Block direct web access to secrets and non-public files.
+# (Only /public and /admin are meant to be opened in the browser.)
+RedirectMatch 404 /\.git
+<FilesMatch "^\.env">
+    Require all denied
+</FilesMatch>
+<FilesMatch "\.(sql|md|log|fbk|state|lock)$">
+    Require all denied
+</FilesMatch>

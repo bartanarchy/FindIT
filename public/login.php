@@ -75,9 +75,10 @@ fiPublicNav(null, 'login');
                     name="email"
                     maxlength="100"
                     value="<?= fiE($email) ?>"
-                    placeholder="you@example.com"
+                    placeholder="NIM@student.polinema.ac.id"
                     autocomplete="username"
                     required>
+                <div class="form-text">Sign in with your Polinema student email.</div>
                 <div class="invalid-feedback">Please enter a valid email address.</div>
             </div>
 

@@ -48,6 +48,7 @@ try {
     $stmt = $pdo->prepare($sql);
     $stmt->execute(['item_id' => $itemId]);
     $item = $stmt->fetch();
+    $item = $item ? Crypto::decryptRow($item) : $item;
 
     if (!$item) {
         http_response_code(404);
@@ -190,6 +191,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwnReport) {
                             :distinctive_features,
                             :claim_status
                         )
+                        RETURNING id_claim
                     ';
 
                     $insertStmt = $pdo->prepare($insertSql);
@@ -197,14 +199,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwnReport) {
                         'claim_code' => $claimCode,
                         'item_id' => $itemId,
                         'user_id' => $userId,
-                        'lost_location' => $formData['lokasi_kehilangan'],
-                        'last_seen' => $formData['terakhir_di_lihat'],
-                        'distinctive_features' => $formData['ciri_khusus_claim'],
+                        // the claimant's answers are stored encrypted.
+                        'lost_location' => Crypto::protect('lokasi_kehilangan', $formData['lokasi_kehilangan']),
+                        'last_seen' => Crypto::protect('terakhir_di_lihat', $formData['terakhir_di_lihat']),
+                        'distinctive_features' => Crypto::protect('ciri_khusus_claim', $formData['ciri_khusus_claim']),
                         'claim_status' => 'Pending Verification',
                     ]);
 
+                    $newClaimId = (int) $insertStmt->fetchColumn();
+
                     // Save the claim before redirecting.
                     $pdo->commit();
+
+                    // copy the saved claim into the encrypted backup.
+                    Backup::record($pdo, 'claim', $newClaimId, 'insert');
 
                     $_SESSION['claim_success_message'] =
                         'Your claim has been submitted successfully. Reference: ' . $claimCode;
