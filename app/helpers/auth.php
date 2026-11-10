@@ -1,4 +1,3 @@
-
 <?php
 
 // We start the session here if the current page hasn't started it yet.
