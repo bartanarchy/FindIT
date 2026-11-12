@@ -35,13 +35,9 @@ define('RECAPTCHA_SITE_KEY', $env['RECAPTCHA_SITE_KEY'] ?? '');
 define('RECAPTCHA_SECRET_KEY', $env['RECAPTCHA_SECRET_KEY'] ?? '');
 
 // Security keys also come from .env (never from the database).
-// APP_ENC_KEY encrypts sensitive columns and the backup. Keep a copy of it
+// APP_ENC_KEY encrypts the sensitive database columns. Keep a copy of it
 // somewhere safe and OFFLINE: without it, encrypted data cannot be recovered.
 define('APP_ENC_KEY', trim($env['APP_ENC_KEY'] ?? ''));
-
-// Optional: absolute path for backups (e.g. another drive or a synced folder).
-// Empty = storage/backup inside the project.
-define('BACKUP_PATH', trim($env['BACKUP_PATH'] ?? ''));
 
 // Validate the configuration before attempting to connect.
 if (
@@ -93,7 +89,6 @@ try {
     );
 }
 
-// Security helpers used by almost every page (encryption, campus email rule, backup).
+// Security helpers used by almost every page (encryption, campus email rule).
 require_once dirname(__DIR__) . '/app/helpers/crypto.php';
 require_once dirname(__DIR__) . '/app/helpers/campus_email.php';
-require_once dirname(__DIR__) . '/app/helpers/backup.php';

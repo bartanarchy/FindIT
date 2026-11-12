@@ -8,7 +8,7 @@ if (PHP_SAPI !== 'cli') {
 
 $root = dirname(__DIR__);
 
-// Loads .env, the database connection ($pdo), Crypto and Backup.
+// Loads .env, the database connection ($pdo) and the Crypto helper.
 require_once $root . '/config/config.php';
 
 function out(string $line = ''): void

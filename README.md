@@ -63,7 +63,7 @@ FindIT/
 │   │   └── ItemController.php
 │   ├── helpers/
 │   │   ├── auth.php
-│   │   ├── backup.php
+│   │   ├── backup_ui.php
 │   │   ├── campus_email.php
 │   │   ├── crypto.php
 │   │   └── csrf.php
@@ -78,6 +78,7 @@ FindIT/
 │   ├── migrations/
 │   └── hardening/
 ├── scripts/            (key, migration, backup, restore: command line only)
+├── docs/               (BACKUP_GUIDE.md)
 ├── public/
 │   ├── assets/
 │   │   ├── css/
@@ -147,36 +148,33 @@ and "already registered" checks work without decrypting anything.
 The key is `APP_ENC_KEY` in `.env`. **Keep an offline copy (password manager / USB). If it is lost,
 the encrypted data and the backups cannot be recovered.** Never commit `.env`.
 
-### Encrypted backup (outside the database)
+### Backup and restore (pg_dump)
 
-* **Journal** (`storage/backup/journal.log`): every write (registration, item report, claim, admin
-  decision, notification) is also saved here, encrypted, append-only and hash-chained.
-* **Snapshots** (`storage/backup/snapshot-*.fbk`): a full encrypted copy of every table.
-* A restore = newest snapshot + the journal entries after it, so it works even if the database was dropped.
-* Set `BACKUP_PATH` in `.env` to keep the backup on another drive or a synced folder.
+Backups are PostgreSQL dumps stored **outside the website folder** (default `C:\FindIT_Backups`), with a
+verified second copy on a remote location (another drive/NAS/synced folder, or SFTP). Admins use
+**Backup Management**, **Backup History** and **Restore Data** in the admin menu; **User Management** is a read-only list.
+Retention: 7 daily + 4 weekly. Restore works from the command line even when the database is gone.
+
+```bash
+php scripts/backup-check.php             # is the setup correct?
+php scripts/backup.php --type=manual     # backup now
+php scripts/restore.php --list           # restorable backups
+php scripts/restore-test.php             # test restore into the throw-away test database
+```
+
+Automatic backups: `powershell -ExecutionPolicy Bypass -File scripts\windows\install-scheduler.ps1`.
+Full guide (configuration, scheduler, restore, failures, file list): [docs/BACKUP_GUIDE.md](docs/BACKUP_GUIDE.md).
 
 ### First-time setup (existing database)
 
 ```bash
 php scripts/generate-key.php --write     # creates APP_ENC_KEY in .env, then copy it somewhere safe
-php scripts/migrate-security.php         # updates tables, encrypts existing rows, first snapshot
-php scripts/verify-backup.php            # confirms the backup opens and the journal is intact
+php scripts/migrate-security.php         # updates tables and encrypts existing rows
+php scripts/backup.php --type=manual --force
 ```
 
 Take a normal database backup in pgAdmin before running `migrate-security.php`.
 Existing accounts that do not use `NIM@student.polinema.ac.id` are listed by the script and can no longer sign in.
-
-### Everyday commands
-
-```bash
-php scripts/backup-snapshot.php          # full snapshot; schedule daily (Windows Task Scheduler / cron)
-php scripts/verify-backup.php            # check backup health
-php scripts/restore.php --dry-run        # preview a restore
-php scripts/restore.php                  # restore after data loss (create an empty FindIT database first)
-```
-
-Copy the backup folder to a second place regularly. A backup on the same disk as the database does not
-protect against losing the whole machine.
 
 ### Optional: restricted database account
 
@@ -225,7 +223,7 @@ DB_NAME=FindIT
 DB_USER=postgres
 DB_PASS=your_local_database_password
 APP_ENC_KEY=            # generate with: php scripts/generate-key.php --write
-BACKUP_PATH=            # optional: folder for encrypted backups
+BACKUP_DIR=             # backups, outside the website folder (see .env.example for all options)
 ```
 
 Replace the example password with your local PostgreSQL password.

@@ -150,9 +150,6 @@ try {
                         'item_id' => $itemId
                     ]);
 
-                    // copy the updated report into the encrypted backup.
-                    Backup::record($pdo, 'item', $itemId, 'update');
-
                     // Return to the inventory after saving.
                     header('Location: items.php?updated=1');
                     exit;

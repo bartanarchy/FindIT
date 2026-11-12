@@ -191,7 +191,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwnReport) {
                             :distinctive_features,
                             :claim_status
                         )
-                        RETURNING id_claim
                     ';
 
                     $insertStmt = $pdo->prepare($insertSql);
@@ -206,13 +205,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwnReport) {
                         'claim_status' => 'Pending Verification',
                     ]);
 
-                    $newClaimId = (int) $insertStmt->fetchColumn();
-
                     // Save the claim before redirecting.
                     $pdo->commit();
-
-                    // copy the saved claim into the encrypted backup.
-                    Backup::record($pdo, 'claim', $newClaimId, 'insert');
 
                     $_SESSION['claim_success_message'] =
                         'Your claim has been submitted successfully. Reference: ' . $claimCode;

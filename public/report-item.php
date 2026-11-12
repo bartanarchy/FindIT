@@ -157,9 +157,6 @@ try {
                         'status' => 'Found'
                     ]);
 
-                    // copy the new report into the encrypted backup.
-                    Backup::record($pdo, 'item', (int) $insertStmt->fetchColumn(), 'insert');
-
                     // redirect after saving to avoid duplicate submissions.
                     header('Location: report-item.php?created=1');
                     exit;

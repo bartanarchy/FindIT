@@ -254,13 +254,8 @@ if ($claim && $_SERVER['REQUEST_METHOD'] === 'POST') {
                         :claim_id,
                         :title,
                         :message
-                    )
-                    RETURNING id_notification'
+                    )'
                 );
-
-                // ids of everything saved in this decision, for the encrypted backup.
-                $backupClaimIds = [$claimId];
-                $backupNotificationIds = [];
 
                 $notificationStmt->execute([
                     'user_id' => (int) $lockedClaim['id_user_pengaju'],
@@ -268,7 +263,6 @@ if ($claim && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     'title' => Crypto::protect('title', $notificationTitle),
                     'message' => Crypto::protect('message', $notificationMessage),
                 ]);
-                $backupNotificationIds[] = (int) $notificationStmt->fetchColumn();
 
                 // Update the item and resolve competing claims only after approval.
                 if ($decision === 'approve') {
@@ -338,20 +332,11 @@ if ($claim && $_SERVER['REQUEST_METHOD'] === 'POST') {
                                 'Your claim has been rejected because this item has already been claimed by another student.'
                             ),
                         ]);
-                        $backupClaimIds[] = (int) $rejectedClaim['id_claim'];
-                        $backupNotificationIds[] = (int) $notificationStmt->fetchColumn();
                     }
                 }
 
                 // Commit only after all required updates have succeeded.
                 $pdo->commit();
-
-                // copy every row this decision changed into the encrypted backup.
-                Backup::recordMany($pdo, 'claim', $backupClaimIds, 'update');
-                Backup::recordMany($pdo, 'notification', $backupNotificationIds, 'insert');
-                if ($decision === 'approve') {
-                    Backup::record($pdo, 'item', $itemId, 'update');
-                }
 
                 // Redirect to prevent the form from being submitted again on refresh.
                 header(

@@ -196,9 +196,6 @@ try {
                         'status' => 'Found' # Change language 
                     ]);
 
-                    // copy the new report into the encrypted backup.
-                    Backup::record($pdo, 'item', (int) $insertStmt->fetchColumn(), 'insert');
-
                     // Return to the inventory after creating the report.
                     header('Location: items.php?created=1');
                     exit;

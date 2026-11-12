@@ -114,9 +114,6 @@ class AuthController
                 $studentId
             );
 
-            // copy the new account into the encrypted backup (outside the database).
-            Backup::record($this->pdo, 'User', $userId, 'insert');
-
             return [
                 'success' => true,
                 'message' => 'Your account has been created. You can now log in.',

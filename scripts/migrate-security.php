@@ -4,7 +4,6 @@
 //   1. updates the table structure (database/migrations/*.sql)
 //   2. encrypts every sensitive value that is still plain text
 //   3. fills the blind indexes used for login / duplicate checks
-//   4. takes the first full encrypted snapshot (the start of the backup)
 // Safe to run again: already-encrypted values are skipped.
 //
 //   php scripts/migrate-security.php
@@ -14,7 +13,7 @@ require_once __DIR__ . '/_bootstrap.php';
 requireKey(); // stops with a clear message if the key is missing
 
 out('FindIT security migration');
-out('Before continuing: make a normal backup of the database (pgAdmin > Backup)');
+out('Before continuing: make a backup of the database (pgAdmin > Backup, or php scripts/backup.php)');
 out('and store a copy of APP_ENC_KEY offline.');
 confirmOrExit('Continue?');
 
@@ -103,9 +102,4 @@ if ($legacy) {
 }
 
 out();
-out('3) First encrypted snapshot (backup)');
-$path = Backup::snapshot($pdo);
-out('  saved ' . $path);
-
-out();
-out('Done. Next: run  php scripts/verify-backup.php  and schedule  php scripts/backup-snapshot.php  daily.');
+out('Done. Next: make a backup of the upgraded database:  php scripts/backup.php --type=manual --force');

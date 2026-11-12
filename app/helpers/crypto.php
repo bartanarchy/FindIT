@@ -212,21 +212,4 @@ final class Crypto
     {
         return hash_hmac('sha256', strtolower(trim($value)), self::subKey('blind'));
     }
-
-    // ------------------------------------------------------ backup envelope
-
-    /** Encrypt backup data (journal lines and snapshots). Returns base64. */
-    public static function sealBackup(string $plain, string $context): string
-    {
-        return base64_encode(self::seal($plain, self::subKey('backup'), 'backup:' . $context));
-    }
-
-    public static function openBackup(string $base64, string $context): string
-    {
-        $blob = base64_decode(trim($base64), true);
-        if ($blob === false) {
-            throw new RuntimeException('Backup data is malformed.');
-        }
-        return self::open($blob, self::subKey('backup'), 'backup:' . $context);
-    }
 }

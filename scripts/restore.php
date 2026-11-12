@@ -1,109 +1,163 @@
 <?php
 
-// Rebuilds the database from the encrypted backup:
-//   newest snapshot  +  every journal entry written after that snapshot.
+// Restore the FindIT database from a backup. Works even when the database is gone,
+// because it does not use the website's database connection.
 //
-//   php scripts/restore.php --dry-run     show what would be restored
-//   php scripts/restore.php               restore (asks for confirmation)
-//   php scripts/restore.php --yes         restore without asking
+//   php scripts/restore.php --status                     what state is the database in?
+//   php scripts/restore.php --list                       backups that can be restored
+//   php scripts/restore.php                              step by step (asks what to restore)
+//   php scripts/restore.php --file=daily/findit_2026-11-12_020000.dump --confirm=<database name>
+//   add --remote to take the file from the remote copy instead of this computer
 //
-// Works even if the whole database was dropped: create an empty "FindIT" database
-// (pgAdmin > Create > Database) and run this script; it recreates the tables first.
-// Rows already in the database are updated to the backed-up version; rows that are
-// not in the backup are left alone.
+// Your current database is never dropped: it is renamed to <name>_old_<time> and kept.
 
-require_once __DIR__ . '/_bootstrap.php';
+if (PHP_SAPI !== 'cli') {
+    http_response_code(403);
+    exit('Command line only.');
+}
 
-requireKey();
-$dry = hasFlag('--dry-run');
+require_once dirname(__DIR__) . '/app/backup/bootstrap.php';
 
-// 1. Load the backup into memory (this also verifies it).
-$snapshot = null;
-$files = Backup::snapshotFiles();
-if ($files) {
-    $newest = end($files);
-    try {
-        $snapshot = Backup::loadSnapshot($newest);
-    } catch (Throwable $e) {
-        out('Cannot open ' . basename($newest) . ': ' . $e->getMessage());
-        out('Check that APP_ENC_KEY in .env is the same key the backup was made with.');
+$file = null;
+$confirm = null;
+$remote = false;
+$mode = 'interactive';
+
+foreach (array_slice($argv, 1) as $arg) {
+    if ($arg === '--status') {
+        $mode = 'status';
+    } elseif ($arg === '--list') {
+        $mode = 'list';
+    } elseif ($arg === '--remote') {
+        $remote = true;
+    } elseif (preg_match('/^--file=(daily|weekly)\/(findit_[A-Za-z0-9_.-]+\.dump)$/', $arg, $m)) {
+        $file = [$m[1], $m[2]];
+        $mode = 'restore';
+    } elseif (preg_match('/^--confirm=(.+)$/', $arg, $m)) {
+        $confirm = $m[1];
+    } elseif ($arg === '--help' || $arg === '-h') {
+        echo "See the comment at the top of scripts/restore.php\n";
+        exit(0);
+    } else {
+        fwrite(STDERR, "Unknown or invalid option: $arg\n");
         exit(1);
     }
-    out('Snapshot: ' . basename($newest) . ' (' . $snapshot['created'] . ')');
-} else {
-    // The journal only holds rows the app wrote (accounts, reports, claims). Categories and
-    // the admin account come from the snapshot, so restoring without one could attach
-    // items to the wrong category.
-    out('No snapshot found. A restore needs at least one snapshot as its base.');
-    out('Run  php scripts/backup-snapshot.php  regularly, and keep copies of the backup folder.');
-    exit(1);
 }
 
-$fromSeq = $snapshot['journal_seq'];
-$replay = [];
-try {
-    foreach (Backup::readJournal() as $entry) {
-        if ($entry['seq'] > $fromSeq) {
-            $replay[] = $entry;
-        }
+function show(string $line = ''): void
+{
+    echo $line . PHP_EOL;
+}
+
+function sizeText(int $bytes): string
+{
+    return $bytes >= 1048576 ? number_format($bytes / 1048576, 1) . ' MB' : number_format($bytes / 1024, 1) . ' KB';
+}
+
+function printResult(array $rec): void
+{
+    show();
+    foreach ($rec['steps'] as $step) {
+        show(sprintf('  [%-7s] %s%s', $step['status'], $step['name'], $step['detail'] !== '' ? ' - ' . $step['detail'] : ''));
     }
-} catch (Throwable $e) {
-    out('The journal cannot be used: ' . $e->getMessage());
-    out('Run  php scripts/verify-backup.php  for details.');
-    exit(1);
-}
-out('Journal entries after the snapshot: ' . count($replay));
-
-foreach ($snapshot['tables'] as $table => $rows) {
-    out(sprintf('  %-13s %d rows in snapshot', $table, count($rows)));
+    foreach ($rec['warnings'] as $warning) {
+        show('  [WARNING] ' . $warning);
+    }
+    show();
 }
 
-if ($dry) {
-    out();
-    out('Dry run - nothing was changed.');
+$database = BackupConfig::dbName();
+$state = RestoreManager::targetState();
+
+if ($mode === 'status') {
+    show('Database "' . $database . '": ' . $state['state'] . ' - ' . $state['message']);
+    $last = RestoreManager::lastRestore();
+    if ($last) {
+        show('Last restore: ' . $last['finished_at'] . ' ' . $last['status'] . ($last['file'] ? ' (' . $last['file'] . ')' : ''));
+    }
     exit(0);
 }
 
-confirmOrExit("\nThis writes the backed-up data into database '" . ($env['DB_NAME'] ?? 'FindIT') . "'.");
+$candidates = RestoreManager::candidates();
 
-// 2. Recreate the tables if the database was wiped.
-$exists = $pdo->query("SELECT to_regclass('public.\"User\"') IS NOT NULL")->fetchColumn();
-if (!$exists) {
-    out('Tables are missing - recreating them from database/schema.sql');
-    $schema = (string) file_get_contents($root . '/database/schema.sql');
-    // schema.sql was dumped from PostgreSQL 18; older servers don't know this setting.
-    if ((int) $pdo->query('SHOW server_version_num')->fetchColumn() < 170000) {
-        $schema = preg_replace('/^SET transaction_timeout.*$/m', '', $schema);
+if ($mode === 'list') {
+    if (!$candidates) {
+        show('No backups found in ' . BackupConfig::baseDir());
+        exit(1);
     }
-    $pdo->exec($schema);
-    $pdo->exec('SET search_path TO public');
+    foreach ($candidates as $i => $c) {
+        show(sprintf('%2d. %s/%s  %s  %s  [%s]%s', $i + 1, $c['kind'], $c['name'], date('Y-m-d H:i', $c['mtime']), sizeText($c['size']), $c['source'], $c['validation'] === 'FAILED' ? '  VALIDATION FAILED' : ''));
+    }
+    exit(0);
 }
-runMigrations($pdo, $root);
 
-// 3. Write everything back in one transaction.
-$pdo->beginTransaction();
-try {
-    $restored = 0;
-
-    foreach (array_keys(Backup::TABLES) as $table) {
-        foreach ($snapshot['tables'][$table] ?? [] as $row) {
-            Backup::upsertRow($pdo, $table, $row);
-            $restored++;
-        }
-    }
-
-    foreach ($replay as $entry) {
-        Backup::upsertRow($pdo, $entry['t'], $entry['row']);
-        $restored++;
-    }
-
-    Backup::fixSequences($pdo);
-    $pdo->commit();
-} catch (Throwable $e) {
-    $pdo->rollBack();
-    out('FAILED, the database was not changed: ' . $e->getMessage());
+show('FindIT restore');
+show('Database "' . $database . '" is: ' . $state['state'] . ' - ' . $state['message']);
+if (in_array($state['state'], ['SERVER_DOWN', 'AUTH_FAILED', 'ERROR'], true)) {
+    show();
+    show('A restore needs a working PostgreSQL server and the restore account (RESTORE_DB_USER / RESTORE_DB_PASS).');
+    show('Start the PostgreSQL service, or fix .env, and run this again.');
     exit(1);
 }
 
-out();
-out("Restored $restored row writes. The application can be used again.");
+if ($mode === 'interactive') {
+    if (!$candidates) {
+        show('No backups were found in ' . BackupConfig::baseDir() . ' (or on the remote copy).');
+        exit(1);
+    }
+
+    show();
+    show('Available backups (newest first):');
+    foreach ($candidates as $i => $c) {
+        show(sprintf('  %2d. %s/%s   %s   %s   [%s]%s', $i + 1, $c['kind'], $c['name'], date('Y-m-d H:i', $c['mtime']), sizeText($c['size']), $c['source'], $c['validation'] === 'FAILED' ? '  VALIDATION FAILED' : ''));
+    }
+    show();
+    echo 'Number of the backup to restore (or press Enter to cancel): ';
+    $choice = trim((string) fgets(STDIN));
+    if ($choice === '' || !ctype_digit($choice) || !isset($candidates[(int) $choice - 1])) {
+        show('Cancelled.');
+        exit(1);
+    }
+
+    $picked = $candidates[(int) $choice - 1];
+    $file = [$picked['kind'], $picked['name']];
+    $remote = $picked['source'] === 'remote';
+
+    show();
+    show('This will replace the database "' . $database . '" with the backup from ' . date('Y-m-d H:i', $picked['mtime']) . '.');
+    show('Your current database is kept (renamed), not deleted.');
+    echo 'To continue, type the database name (' . $database . '): ';
+    $confirm = trim((string) fgets(STDIN));
+}
+
+if ($file === null || $confirm === null) {
+    fwrite(STDERR, "Give both --file=<daily|weekly>/<name>.dump and --confirm=<database name>.\n");
+    exit(1);
+}
+
+$by = 'cli:' . (function_exists('posix_getpwuid') && function_exists('posix_geteuid') ? (posix_getpwuid(posix_geteuid())['name'] ?? 'user') : (getenv('USERNAME') ?: 'user'));
+
+show();
+show('Restoring... (this can take a minute)');
+
+$rec = RestoreManager::restoreMain([
+    'kind' => $file[0],
+    'name' => $file[1],
+    'source' => $remote ? 'remote' : 'local',
+    'by' => $by,
+    'confirm' => $confirm,
+]);
+
+printResult($rec);
+
+if ($rec['status'] === 'SUCCESS') {
+    show('RESTORE SUCCESSFUL. The website can use the database again.');
+    if ($rec['old_database']) {
+        show('The previous database was kept as "' . $rec['old_database'] . '". Drop it yourself when you are sure it is not needed.');
+    }
+    exit(0);
+}
+
+show('RESTORE FAILED: ' . $rec['error']);
+show('Your database was not replaced. Details: ' . BackupConfig::baseDir() . '/logs/restore.log');
+exit(1);
