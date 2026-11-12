@@ -152,7 +152,7 @@ the encrypted data and the backups cannot be recovered.** Never commit `.env`.
 
 Backups are PostgreSQL dumps stored **outside the website folder** (default `C:\FindIT_Backups`), with a
 verified second copy on a remote location (another drive/NAS/synced folder, or SFTP). Admins use
-**Backup Management**, **Backup History** and **Restore Data** in the admin menu; **User Management** is a read-only list.
+**Backup Management** (Backup Now, history and restore on one page) in the admin menu; **User Management** is a read-only list.
 Retention: 7 daily + 4 weekly. Restore works from the command line even when the database is gone.
 
 ```bash

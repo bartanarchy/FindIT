@@ -162,9 +162,6 @@ function fiAdminNav(string $active = ''): void
     echo $link('claims.php', 'Claim Management', 'claims', $active) . "\n";
     echo $link('users.php', 'User Management', 'users', $active) . "\n";
     echo $link('backups.php', 'Backup Management', 'backups', $active) . "\n";
-    echo $link('backup-history.php', 'Backup History', 'history', $active) . "\n";
-    echo $link('restore.php', 'Restore Data', 'restore', $active) . "\n";
-    echo '<li class="nav-item"><a class="nav-link" href="../public/index.php">View site</a></li>' . "\n";
     echo '<li class="nav-item ms-md-2"><a class="btn btn-outline-secondary btn-sm" href="../public/logout.php">Sign out</a></li>' . "\n";
     echo '</ul>' . "\n";
     echo '</div>' . "\n";

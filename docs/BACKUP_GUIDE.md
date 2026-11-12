@@ -37,7 +37,7 @@ Cek semuanya: `php scripts\backup-check.php`
 
 ## 3. Backup manual
 
-* Web: login admin → **Backup Management** → **Backup Now**.
+* Web: login admin → **Backup Management** → **Backup Now** (riwayat dan restore ada di halaman yang sama).
 * Command line: `php scripts\backup.php --type=manual`
 * Hanya kirim ulang ke remote: `php scripts\backup.php --retry-remote`
 
@@ -71,7 +71,7 @@ php scripts\restore.php --file=... --confirm=FindIT --remote    # ambil dari sal
 
 Cara aman yang dipakai: backup dimuat ke database sementara, divalidasi (tabel, jumlah baris, relasi), baru ditukar nama.
 Database lama **tidak dihapus**, namanya menjadi `<db>_old_<waktu>`. File backup sumber tidak pernah dihapus.
-Restore tetap bisa jalan bila database sudah hilang (tidak butuh website). Restore dari web: **Restore Data**
+Restore tetap bisa jalan bila database sudah hilang (tidak butuh website). Restore dari web: bagian **Restore data** di Backup Management
 (harus `RESTORE_WEB_ENABLED=true`, mengetik nama database, hanya file dari daftar, tidak menerima path bebas).
 
 Uji tanpa risiko (hanya menyentuh database test): `php scripts\restore-test.php`.
@@ -108,7 +108,7 @@ Jalankan `backup-check.php`, satu backup manual, dan `restore-drill.php` di komp
 
 Baru: `app/backup/*` (BackupConfig, BackupManager, RestoreManager, BackupStore, OperationLock, ProcessRunner,
 RemoteStorage, FolderRemote, SftpRemote, bootstrap), `app/helpers/backup_ui.php`,
-`admin/users.php`, `admin/backups.php`, `admin/backup-history.php`, `admin/restore.php`,
+`admin/users.php`, `admin/backups.php` (backup, history dan restore dalam satu halaman),
 `scripts/backup.php`, `backup-check.php`, `restore.php`, `restore-test.php`, `restore-drill.php`,
 `scripts/windows/install-scheduler.ps1`, `docs/BACKUP_GUIDE.md`.
 Diubah: `app/helpers/ui.php` (menu admin), `admin/index.php` (kartu), `database/hardening/least-privilege.sql`, `.env.example`, `README.md`.
