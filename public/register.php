@@ -129,10 +129,17 @@ fiPublicNav(null, 'register');
                         name="email"
                         maxlength="100"
                         value="<?= fiE($formData['email']) ?>"
-                        placeholder="you@example.com"
+                        placeholder="2341720001@student.polinema.ac.id"
+                        pattern="[0-9]+@student\.polinema\.ac\.id"
+                        title="Use your student email: NIM@student.polinema.ac.id"
                         autocomplete="email"
                         required>
-                    <div class="invalid-feedback">Please enter a valid email address.</div>
+                    <div class="form-text">
+                        Only Polinema student emails work: NIM@student.polinema.ac.id
+                    </div>
+                    <div class="invalid-feedback">
+                        Please use your student email in the format NIM@student.polinema.ac.id.
+                    </div>
                 </div>
 
                 <div class="col-12 col-sm-6">
