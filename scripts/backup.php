@@ -2,7 +2,7 @@
 
 // Makes a database backup. This is what Windows Task Scheduler runs.
 //
-//   php scripts/backup.php                    scheduled backup (daily, plus weekly when due)
+//   php scripts/backup.php                    scheduled backup (daily)
 //   php scripts/backup.php --type=manual      extra backup right now
 //   php scripts/backup.php --force            ignore the "backup was made recently" rule
 //   php scripts/backup.php --retry-remote     only retry copies that never reached the remote
@@ -23,7 +23,7 @@ $options = ['trigger' => 'task', 'force' => false, 'retries' => 1, 'retry_delay'
 $retryOnly = false;
 
 foreach (array_slice($argv, 1) as $arg) {
-    if (preg_match('/^--type=(auto|daily|weekly|manual)$/', $arg, $m)) {
+    if (preg_match('/^--type=(auto|daily|manual)$/', $arg, $m)) {
         $type = $m[1];
     } elseif ($arg === '--force') {
         $options['force'] = true;
