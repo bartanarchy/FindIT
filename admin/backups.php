@@ -147,11 +147,30 @@ fiAdminNav('backups');
 
         <?php if ($result): ?>
             <?php if (($result['status'] ?? '') === 'SUCCESS'): ?>
-                <?php fiAlert('success', 'The database was restored. The previous database was kept as "' . ($result['old_database'] ?? 'none') . '".'); ?>
-                <?php  ?>
+                <?php fiAlert('success', 'The database "' . $dbName . '" was restored and checked. The website can use it again.'
+                    . (!empty($result['old_database']) ? ' The previous database was kept as "' . $result['old_database'] . '".' : '')); ?>
             <?php else: ?>
                 <?php fiAlert('danger', (string) ($result['error'] ?? 'The restore failed. Nothing was replaced.')); ?>
             <?php endif; ?>
+            <div class="fi-table-panel p-3 mb-4">
+                <h2 class="h5 mb-3">Restore result</h2>
+                <ol class="list-unstyled mb-0">
+                    <?php foreach (($result['steps'] ?? []) as $i => $step): ?>
+                        <li class="mb-2">
+                            <?php fiBackupBadge($step['status'] === 'OK' ? 'SUCCESS' : ($step['status'] === 'SKIPPED' ? 'SKIPPED' : 'FAILED')); ?>
+                            <strong><?= (int) $i + 1 ?>. <?= fiE((string) $step['name']) ?></strong>
+                            <?php if (($step['detail'] ?? '') !== ''): ?><br><small class="text-muted"><?= fiE((string) $step['detail']) ?></small><?php endif; ?>
+                        </li>
+                    <?php endforeach; ?>
+                </ol>
+                <?php if (($result['status'] ?? '') === 'SUCCESS'): ?>
+                    <a class="btn btn-primary mt-3" href="../public/index.php">Open the website</a>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
+
+        <?php if ($state['state'] === 'MISSING'): ?>
+            <?php fiAlert('warning', 'The database "' . $dbName . '" does not exist right now, so the website is offline. Choose a backup under "Restore data" below: it will create "' . $dbName . '" again with the same settings from .env.'); ?>
         <?php endif; ?>
 
         <section class="fi-action-grid" aria-label="Database state">
@@ -166,6 +185,22 @@ fiAdminNav('backups');
                 <h2>If the website cannot open</h2>
                 <p>Run this on the server computer. It works even when the database is missing:</p>
                 <p><code>php scripts\restore.php --list</code><br><code>php scripts\restore.php --file=daily/&lt;file&gt;</code></p>
+            </div>
+        </section>
+
+        <section aria-labelledby="flow-heading" class="mb-4">
+            <div class="fi-table-panel p-3">
+                <h2 id="flow-heading" class="h5 mb-3">How a restore works</h2>
+                <ol class="mb-0">
+                    <li>Pick a backup file (from this computer, or from the remote copy if the local one is gone).</li>
+                    <li>FindIT reads the database name (<strong><?= fiE($dbName) ?></strong>) from <code>.env</code> and connects to the PostgreSQL maintenance database, not to <?= fiE($dbName) ?>, which may be deleted.</li>
+                    <li>The file is checked: checksum and the 7 required tables.</li>
+                    <li>A new empty database is created (UTF-8), so nothing existing is touched.</li>
+                    <li>The backup is loaded into it, then tables, rows and relations are checked.</li>
+                    <li>The website account is given access to the restored tables.</li>
+                    <li>The new database is put in place as <strong><?= fiE($dbName) ?></strong>. If an old one existed it is renamed, not deleted.</li>
+                    <li>The result of every step is shown here and written to the restore log.</li>
+                </ol>
             </div>
         </section>
 
