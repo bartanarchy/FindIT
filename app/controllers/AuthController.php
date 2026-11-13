@@ -27,7 +27,7 @@ class AuthController
     {
         // we collect and clean up the registration input before checking it.
         $name = trim($data['name'] ?? '');
-        $email = trim($data['email'] ?? '');
+        $email = normalizeCampusEmail($data['email'] ?? '');
         $phone = trim($data['phone'] ?? '');
         $studentId = trim($data['student_id'] ?? '');
         $password = $data['password'] ?? '';
@@ -45,6 +45,15 @@ class AuthController
             return [
                 'success' => false,
                 'message' => 'Please complete all required fields.',
+            ];
+        }
+
+        // only Polinema student emails (NIM@student.polinema.ac.id) may register.
+        // gmail, .id, or any other domain is rejected here, on the server.
+        if (!isCampusStudentEmail($email)) {
+            return [
+                'success' => false,
+                'message' => CAMPUS_EMAIL_ERROR,
             ];
         }
 
@@ -111,6 +120,14 @@ class AuthController
                 'user_id' => $userId,
             ];
         } catch (PDOException $e) {
+            // two people registering the same email/NIM at once: the unique index stops the second.
+            if ($e->getCode() === '23505') {
+                return [
+                    'success' => false,
+                    'message' => 'This campus email or student ID is already registered.',
+                ];
+            }
+
             error_log('[FindIT] Registration failed: ' . $e->getMessage());
 
             return [
@@ -123,7 +140,7 @@ class AuthController
     public function login(string $email, string $password): array
     {
         // we reject empty input before looking up an account.
-        $email = trim($email);
+        $email = normalizeCampusEmail($email);
 
         if ($email === '' || $password === '') {
             return [
@@ -152,6 +169,15 @@ class AuthController
                     'success' => true,
                     'role' => 'admin',
                     'redirect' => '../admin/index.php',
+                ];
+            }
+
+            // students must sign in with their campus email. Any other address
+            // (gmail, etc.) is refused before we even look in the database.
+            if (!isCampusStudentEmail($email)) {
+                return [
+                    'success' => false,
+                    'message' => CAMPUS_EMAIL_ERROR,
                 ];
             }
 
