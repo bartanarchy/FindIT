@@ -30,7 +30,7 @@ foreach (array_slice($argv, 1) as $arg) {
         $mode = 'list';
     } elseif ($arg === '--remote') {
         $remote = true;
-    } elseif (preg_match('/^--file=(daily|weekly)\/(findit_[A-Za-z0-9_.-]+\.dump)$/', $arg, $m)) {
+    } elseif (preg_match('/^--file=(daily)\/(findit_[A-Za-z0-9_.-]+\.dump)$/', $arg, $m)) {
         $file = [$m[1], $m[2]];
         $mode = 'restore';
     } elseif (preg_match('/^--confirm=(.+)$/', $arg, $m)) {
@@ -131,7 +131,7 @@ if ($mode === 'interactive') {
 }
 
 if ($file === null || $confirm === null) {
-    fwrite(STDERR, "Give both --file=<daily|weekly>/<name>.dump and --confirm=<database name>.\n");
+    fwrite(STDERR, "Give both --file=daily/<name>.dump and --confirm=<database name>.\n");
     exit(1);
 }
 
