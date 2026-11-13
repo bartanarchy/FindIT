@@ -18,7 +18,7 @@ interface RemoteStorage
     /** Safe description for the dashboard (never contains secrets). */
     public function describe(): string;
 
-    /** Copy a local file to the remote ($kind is "daily" or "weekly"). Throws on failure. */
+    /** Copy a local file to the remote ($kind is always "daily"). Throws on failure. */
     public function upload(string $localPath, string $remoteName, string $kind): void;
 
     /** Size and SHA-256 of the file as it exists on the remote, or null if missing. */
@@ -77,7 +77,7 @@ final class RemoteFactory
 
     public static function safeKind(string $kind): bool
     {
-        return $kind === 'daily' || $kind === 'weekly';
+        return $kind === 'daily';
     }
 
     public static function assertValid(string $name, string $kind): void
