@@ -24,14 +24,20 @@ SET default_table_access_method = heap;
 
 CREATE TABLE public."User" (
     id_user integer NOT NULL,
-    email_kampus character varying(100) NOT NULL,
-    name_user character varying(50) NOT NULL,
+    email_kampus text NOT NULL,
+    name_user text NOT NULL,
     password_user character varying(255) NOT NULL,
-    no_telp character varying(15) NOT NULL,
+    no_telp text NOT NULL,
     role_user character varying(20) NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    id_nim character varying(20)
+    id_nim text,
+    email_bidx character varying(64),
+    nim_bidx character varying(64)
 );
+
+-- Security: email_kampus, name_user, no_telp and id_nim hold encrypted text (written by the
+-- application, see app/helpers/crypto.php). email_bidx / nim_bidx are keyed hashes used for
+-- login and duplicate checks without decrypting.
 
 ALTER TABLE public."User" OWNER TO postgres;
 
@@ -81,8 +87,8 @@ CREATE TABLE public.claim (
     ciri_khusus_claim text,
     catatan_admin text,
     status_klaim character varying(20),
-    kode_pengambilan character varying(50),
-    lokasi_pengambilan character varying(100),
+    kode_pengambilan text,
+    lokasi_pengambilan text,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
@@ -100,7 +106,7 @@ CREATE TABLE public.item (
     id_item integer NOT NULL,
     id_user_pelapor integer NOT NULL,
     id_kategori integer NOT NULL,
-    nama_barang character varying(100) NOT NULL,
+    nama_barang text NOT NULL,
     detail_lokasi text,
     tanggal_ditemukan date,
     ciri_umum text,
@@ -157,8 +163,17 @@ SELECT pg_catalog.setval('public.item_id_item_seq', 1, false);
 SELECT pg_catalog.setval('public.item_kode_laporan_seq', 1, false);
 SELECT pg_catalog.setval('public.location_id_location_seq', 1, false);
 
-ALTER TABLE ONLY public."User" ADD CONSTRAINT "User_email_kampus_key" UNIQUE (email_kampus);
-ALTER TABLE ONLY public."User" ADD CONSTRAINT "User_id_nim_key" UNIQUE (id_nim);
+-- Notifications sent to students about their claims (title and message are stored encrypted).
+CREATE TABLE public.notification (
+    id_notification bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+    id_user integer NOT NULL,
+    id_claim integer,
+    title text NOT NULL,
+    message text NOT NULL,
+    is_read boolean DEFAULT false NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
 ALTER TABLE ONLY public."User" ADD CONSTRAINT "User_pkey" PRIMARY KEY (id_user);
 
 ALTER TABLE ONLY public.admin ADD CONSTRAINT admin_email_admin_key UNIQUE (email_admin);
@@ -173,6 +188,11 @@ ALTER TABLE ONLY public.item ADD CONSTRAINT item_id_item_key UNIQUE (id_item);
 ALTER TABLE ONLY public.item ADD CONSTRAINT item_pkey PRIMARY KEY (kode_laporan);
 
 ALTER TABLE ONLY public.location ADD CONSTRAINT location_pkey PRIMARY KEY (id_location);
+ALTER TABLE ONLY public.notification ADD CONSTRAINT notification_pkey PRIMARY KEY (id_notification);
+
+CREATE INDEX idx_notification_user_unread ON public.notification USING btree (id_user, is_read, created_at DESC);
+CREATE UNIQUE INDEX user_email_bidx_key ON public."User" USING btree (email_bidx);
+CREATE UNIQUE INDEX user_nim_bidx_key ON public."User" USING btree (nim_bidx);
 
 ALTER TABLE ONLY public.claim
     ADD CONSTRAINT fk_claim_admin FOREIGN KEY (id_admin_verifikator) REFERENCES public.admin(id_admin) ON UPDATE CASCADE ON DELETE SET NULL;
@@ -191,5 +211,11 @@ ALTER TABLE ONLY public.item
 
 ALTER TABLE ONLY public.item
     ADD CONSTRAINT fk_item_user FOREIGN KEY (id_user_pelapor) REFERENCES public."User"(id_user) ON UPDATE CASCADE ON DELETE SET NULL;
+
+ALTER TABLE ONLY public.notification
+    ADD CONSTRAINT notification_id_claim_fkey FOREIGN KEY (id_claim) REFERENCES public.claim(id_claim) ON DELETE SET NULL;
+
+ALTER TABLE ONLY public.notification
+    ADD CONSTRAINT notification_id_user_fkey FOREIGN KEY (id_user) REFERENCES public."User"(id_user) ON DELETE CASCADE;
 
 -- Completed on 2026-10-10 19:02:09
