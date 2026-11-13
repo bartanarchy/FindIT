@@ -9,7 +9,7 @@
 final class BackupConfig
 {
     /** Folders inside the backup directory that the system may create. */
-    private const SUBDIRS = ['daily', 'weekly', 'logs', 'logs/runs', 'logs/restores', 'config', 'tmp'];
+    private const SUBDIRS = ['daily', 'logs', 'logs/runs', 'logs/restores', 'tmp'];
 
     private static ?array $env = null;
     private static array $toolCache = [];
@@ -194,11 +194,6 @@ final class BackupConfig
     public static function keepDailyDays(): int
     {
         return self::int('BACKUP_KEEP_DAILY_DAYS', 7, 1, 3650);
-    }
-
-    public static function keepWeeklyWeeks(): int
-    {
-        return self::int('BACKUP_KEEP_WEEKLY_WEEKS', 4, 1, 520);
     }
 
     /** Skip a scheduled backup if a good one was made less than this many hours ago. */
