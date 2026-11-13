@@ -43,7 +43,7 @@ try {
     ';
 
     $stmt = $pdo->query($sql);
-    $items = $stmt->fetchAll();
+    $items = Crypto::decryptRows($stmt->fetchAll());
 
     // build the category filter from categories actually in use.
     foreach ($items as $item) {

@@ -103,6 +103,18 @@ fiAdminNav('dashboard');
                     View claims<?= !empty($stats['pending']) ? ' (' . (int) $stats['pending'] . ' waiting)' : '' ?>
                 </a>
             </div>
+
+            <div class="fi-action-card">
+                <h2>Users</h2>
+                <p>See registered student accounts (read-only).</p>
+                <a href="users.php" class="btn btn-primary">View users</a>
+            </div>
+
+            <div class="fi-action-card">
+                <h2>Backup &amp; restore</h2>
+                <p>Back up the database, check backup history and restore data.</p>
+                <a href="backups.php" class="btn btn-primary">Backup management</a>
+            </div>
         </section>
 
     </div>

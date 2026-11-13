@@ -43,7 +43,7 @@ try {
     ';
 
     $stmt = $pdo->query($sql);
-    $claims = $stmt->fetchAll();
+    $claims = Crypto::decryptRows($stmt->fetchAll());
 } catch (PDOException $e) {
     // keep database details in the server log, not in the page.
     error_log('Manage Claims error: ' . $e->getMessage());
