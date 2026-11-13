@@ -2,7 +2,6 @@
 
 require_once dirname(__DIR__) . '/config/config.php';
 require_once dirname(__DIR__) . '/app/helpers/auth.php';
-require_once dirname(__DIR__) . '/app/helpers/csrf.php';
 require_once dirname(__DIR__) . '/app/helpers/ui.php';
 
 // Only signed-in students can access their notifications.
@@ -18,40 +17,6 @@ if ($userId < 1) {
 
 $errorMessage = '';
 $notifications = [];
-$csrfToken = generateCsrfToken();
-
-// Mark a notification as read only when it belongs to this student.
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $submittedToken = $_POST['csrf_token'] ?? '';
-    $notificationId = filter_input(INPUT_POST, 'notification_id', FILTER_VALIDATE_INT);
-
-    if (!is_string($submittedToken) || !verifyCsrfToken($submittedToken)) {
-        $errorMessage = 'Your form session has expired. Refresh the page and try again.';
-    } elseif (!$notificationId || $notificationId < 1) {
-        $errorMessage = 'Invalid notification ID.';
-    } else {
-        try {
-            $updateStmt = $pdo->prepare(
-                'UPDATE public.notification
-                 SET is_read = TRUE
-                 WHERE id_notification = :notification_id
-                   AND id_user = :user_id'
-            );
-
-            $updateStmt->execute([
-                'notification_id' => $notificationId,
-                'user_id' => $userId,
-            ]);
-
-            // Redirect after saving to prevent the form from being submitted again.
-            header('Location: notifications.php');
-            exit;
-        } catch (PDOException $e) {
-            error_log('[FindIT] Failed to update notification: ' . $e->getMessage());
-            $errorMessage = 'Unable to update this notification. Please try again.';
-        }
-    }
-}
 
 // Load only this student's notifications, newest first.
 try {
@@ -158,13 +123,6 @@ fiPublicNav($user, 'notifications');
                                 </a>
                             <?php endif; ?>
 
-                            <?php if (!$notification['is_read']): ?>
-                                <form method="POST" action="notifications.php">
-                                    <input type="hidden" name="csrf_token" value="<?= fiE($csrfToken) ?>">
-                                    <input type="hidden" name="notification_id" value="<?= (int) $notification['id_notification'] ?>">
-                                    <button class="btn btn-primary btn-sm" type="submit">Mark as read</button>
-                                </form>
-                            <?php endif; ?>
                         </div>
                     </article>
                 <?php endforeach; ?>
