@@ -139,7 +139,7 @@ final class SftpRemote implements RemoteStorage
         $final = $this->remotePath($kind, $remoteName);
         $part = $this->dir . '/' . $kind . '/.' . $remoteName . '.part';
 
-        $r = $this->ssh("mkdir -p -- '" . $this->dir . "/daily' '" . $this->dir . "/weekly'");
+        $r = $this->ssh("mkdir -p -- '" . $this->dir . "/daily'");
         if ($r['exit'] !== 0) {
             throw $this->fail('prepare folders', $r);
         }
@@ -211,7 +211,7 @@ final class SftpRemote implements RemoteStorage
     public function test(): array
     {
         try {
-            $r = $this->ssh("mkdir -p -- '" . $this->dir . "/daily' '" . $this->dir . "/weekly' && echo ok", 40);
+            $r = $this->ssh("mkdir -p -- '" . $this->dir . "/daily' && echo ok", 40);
         } catch (Throwable $e) {
             return ['ok' => false, 'message' => $e->getMessage()];
         }
