@@ -158,10 +158,11 @@ function fiAdminNav(string $active = ''): void
     echo '<div class="collapse navbar-collapse" id="fiNav">' . "\n";
     echo '<ul class="navbar-nav ms-auto align-items-md-center gap-md-1">' . "\n";
     echo $link('index.php', 'Dashboard', 'dashboard', $active) . "\n";
-    echo $link('items.php', 'Item Management', 'items', $active) . "\n";
-    echo $link('claims.php', 'Claim Management', 'claims', $active) . "\n";
+    echo $link('items.php', 'Item', 'items', $active) . "\n";
+    echo $link('claims.php', 'Claim', 'claims', $active) . "\n";
     echo $link('users.php', 'User Management', 'users', $active) . "\n";
-    echo $link('backups.php', 'Backup Management', 'backups', $active) . "\n";
+    echo $link('backups.php', 'Backup', 'backups', $active) . "\n";
+    echo '<li class="nav-item"><a class="nav-link" href="../public/index.php">View site</a></li>' . "\n";
     echo '<li class="nav-item ms-md-2"><a class="btn btn-outline-secondary btn-sm" href="../public/logout.php">Sign out</a></li>' . "\n";
     echo '</ul>' . "\n";
     echo '</div>' . "\n";
