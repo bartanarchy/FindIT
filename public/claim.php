@@ -146,29 +146,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwnReport) {
                     );
                 }
 
-                // Prevent duplicate pending claims for the same student and item.
-                $duplicateSql = '
-                    SELECT id_claim
-                    FROM public.claim
-                    WHERE id_item = :item_id
-                      AND id_user_pengaju = :user_id
-                      AND status_klaim = :claim_status
-                    LIMIT 1
-                ';
-
-                $duplicateStmt = $pdo->prepare($duplicateSql);
+                // One claim per student per item: any earlier claim (pending,
+                // approved or rejected) blocks a new one. A rejected student
+                // cannot try again for the same item.
+                $duplicateStmt = $pdo->prepare(
+                    'SELECT status_klaim
+                     FROM public.claim
+                     WHERE id_item = :item_id
+                       AND id_user_pengaju = :user_id
+                     LIMIT 1'
+                );
                 $duplicateStmt->execute([
                     'item_id' => $itemId,
                     'user_id' => $userId,
-                    'claim_status' => 'Pending Verification',
                 ]);
+                $previousClaim = $duplicateStmt->fetch();
 
-                if ($duplicateStmt->fetch()) {
-                    // Cancel the transaction if a pending claim already exists.
-                    $pdo->rollBack();
+                if ($previousClaim) {
+                    throw new RuntimeException(
+                        ($previousClaim['status_klaim'] ?? '') === 'Rejected'
+                            ? 'Your previous claim for this item was rejected, so you cannot claim it again.'
+                            : 'You have already submitted a claim for this item.'
+                    );
+                }
 
-                    $errorMessage = 'You already have a pending claim for this item.';
-                } else {
+                {
                     // Create a unique reference code for this claim request.
                     $claimCode = 'CLM-' . date('Ymd') . '-' .
                         strtoupper(bin2hex(random_bytes(4)));
@@ -238,6 +240,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwnReport) {
                     : 'Something went wrong while submitting your claim. Please try again.';
             }
         }
+    }
+}
+
+// Has this student already claimed this item? (any status: one claim per item)
+$previousClaimStatus = null;
+
+if ($currentUserId > 0 && !$isOwnReport) {
+    try {
+        $previousStmt = $pdo->prepare(
+            'SELECT status_klaim
+             FROM public.claim
+             WHERE id_item = :item_id
+               AND id_user_pengaju = :user_id
+             LIMIT 1'
+        );
+        $previousStmt->execute([
+            'item_id' => $itemId,
+            'user_id' => $currentUserId,
+        ]);
+        $previousRow = $previousStmt->fetch();
+        $previousClaimStatus = $previousRow ? (string) $previousRow['status_klaim'] : null;
+    } catch (PDOException $e) {
+        error_log('[FindIT] Failed to check previous claim: ' . $e->getMessage());
     }
 }
 
@@ -329,6 +354,22 @@ fiPublicNav(currentUser(), 'home');
                 <a href="index.php" class="btn btn-outline-secondary">
                     Back to found items
                 </a>
+
+            <?php elseif ($previousClaimStatus !== null): ?>
+
+                <?php
+                fiAlert(
+                    'warning',
+                    $previousClaimStatus === 'Rejected'
+                        ? 'Your claim for this item was rejected, so you cannot claim it again.'
+                        : 'You have already submitted a claim for this item. You can follow its progress on My claims.'
+                );
+                ?>
+
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="my-claims.php" class="btn btn-primary">View my claims</a>
+                    <a href="index.php" class="btn btn-outline-secondary">Browse other items</a>
+                </div>
 
             <?php elseif ($item['status_barang'] !== 'Found'): ?>
 
