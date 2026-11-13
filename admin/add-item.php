@@ -41,11 +41,15 @@ try {
     $studentStmt = $pdo->query(
         'SELECT id_user, name_user, email_kampus
          FROM public."User"
-         WHERE role_user = \'student\'
-         ORDER BY name_user ASC'
+         WHERE role_user = \'student\''
     );
 
-    $students = $studentStmt->fetchAll();
+    // names are stored encrypted, so decrypt first and sort in PHP.
+    $students = Crypto::decryptRows($studentStmt->fetchAll());
+    usort($students, static fn($a, $b) => strcasecmp(
+        (string) $a['name_user'],
+        (string) $b['name_user']
+    ));
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Read and validate the submitted CSRF token.
@@ -179,14 +183,15 @@ try {
                     $insertStmt->execute([
                         'reporter_id' => $reporterId,
                         'category_id' => $categoryId,
-                        'name' => $name,
-                        'location' => $location,
+                        // item text is stored encrypted.
+                        'name' => Crypto::protect('nama_barang', $name),
+                        'location' => Crypto::protect('detail_lokasi', $location),
                         'date_found' => $dateFound,
                         'general_features' => $generalFeatures !== ''
-                            ? $generalFeatures
+                            ? Crypto::protect('ciri_umum', $generalFeatures)
                             : null,
                         'distinctive_features' => $distinctiveFeatures !== ''
-                            ? $distinctiveFeatures
+                            ? Crypto::protect('ciri_khusus', $distinctiveFeatures)
                             : null,
                         'status' => 'Found' # Change language 
                     ]);
