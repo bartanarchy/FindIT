@@ -1,4 +1,7 @@
-
+# Secrets and local settings: never commit these.
 .env
-/storage/logs/
+
+# Uploaded files and backups stay on each computer.
 /public/uploads/
+*.dump
+*.dump.sha256
