@@ -219,7 +219,9 @@ fiAdminNav('backups');
                     <input type="hidden" name="name" value="<?= fiE($selected['name']) ?>">
                     <input type="hidden" name="source" value="<?= fiE($selected['source']) ?>">
                     <label for="confirm" class="form-label">Type the database name <strong><?= fiE($dbName) ?></strong> to confirm</label>
-                    <input class="form-control mb-3" id="confirm" name="confirm" required>
+                    <input class="form-control mb-1" id="confirm" name="confirm" required
+                        placeholder="<?= fiE($dbName) ?>" autocomplete="off" spellcheck="false">
+                    <p class="small text-muted mb-3">This is not a password. Just type the database name shown above (<?= fiE($dbName) ?>).</p>
                     <button type="submit" class="btn btn-primary"
                         onclick="if(this.form.checkValidity()){this.disabled=true;this.textContent='Restoring…';this.form.submit();}">Restore now</button>
                     <a class="btn btn-outline-secondary" href="backups.php#restore">Cancel</a>
