@@ -73,7 +73,7 @@ if ($mode === 'status') {
     show('Database "' . $database . '": ' . $state['state'] . ' - ' . $state['message']);
     $last = RestoreManager::lastRestore();
     if ($last) {
-        show('Last restore: ' . $last['finished_at'] . ' ' . $last['status'] . ($last['file'] ? ' (' . $last['file'] . ')' : ''));
+        show('Last restore: ' . $last['status'] . ' - ' . RestoreManager::summaryLine($last));
     }
     exit(0);
 }
@@ -152,8 +152,9 @@ printResult($rec);
 
 if ($rec['status'] === 'SUCCESS') {
     show('RESTORE SUCCESSFUL. The website can use the database again.');
+    show('Status: ' . RestoreManager::summaryLine($rec));
     if ($rec['old_database']) {
-        show('The previous database was kept as "' . $rec['old_database'] . '". Drop it yourself when you are sure it is not needed.');
+        show('Drop the previous database yourself when you are sure it is not needed.');
     }
     exit(0);
 }

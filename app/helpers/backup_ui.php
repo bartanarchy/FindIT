@@ -29,10 +29,14 @@ function fiBackupBadge(?string $status): void
         case 'DAMAGED':
             $class = 'fi-badge--danger';
             break;
+        case 'PASSED':
+            $class = 'fi-badge--success';
+            break;
         default:
             $class = 'fi-badge--neutral';
     }
-    $label = $status === '' ? 'Unknown' : str_replace('_', ' ', $status);
+    $labels = ['NOT_APPLICABLE' => 'Not needed', 'REFUSED' => 'Refused'];
+    $label = $status === '' ? 'Unknown' : ($labels[$status] ?? str_replace('_', ' ', $status));
     echo '<span class="fi-badge ' . $class . '">' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '</span>';
 }
 

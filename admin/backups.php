@@ -150,27 +150,7 @@ fiAdminNav('backups');
         </section>
 
         <?php if ($result): ?>
-            <?php if (($result['status'] ?? '') === 'SUCCESS'): ?>
-                <?php fiAlert('success', 'The database "' . $dbName . '" was restored and checked. The website can use it again.'
-                    . (!empty($result['old_database']) ? ' The previous database was kept as "' . $result['old_database'] . '".' : '')); ?>
-            <?php else: ?>
-                <?php fiAlert('danger', (string) ($result['error'] ?? 'The restore failed. Nothing was replaced.')); ?>
-            <?php endif; ?>
-            <div class="fi-table-panel p-3 mb-4">
-                <h2 class="h5 mb-3">Restore result</h2>
-                <ol class="list-unstyled mb-0">
-                    <?php foreach (($result['steps'] ?? []) as $i => $step): ?>
-                        <li class="mb-2">
-                            <?php fiBackupBadge($step['status'] === 'OK' ? 'SUCCESS' : ($step['status'] === 'SKIPPED' ? 'SKIPPED' : 'FAILED')); ?>
-                            <strong><?= (int) $i + 1 ?>. <?= fiE((string) $step['name']) ?></strong>
-                            <?php if (($step['detail'] ?? '') !== ''): ?><br><small class="text-muted"><?= fiE((string) $step['detail']) ?></small><?php endif; ?>
-                        </li>
-                    <?php endforeach; ?>
-                </ol>
-                <?php if (($result['status'] ?? '') === 'SUCCESS'): ?>
-                    <a class="btn btn-primary mt-3" href="../public/index.php">Open the website</a>
-                <?php endif; ?>
-            </div>
+            <?php fiAlert(($result['status'] ?? '') === 'SUCCESS' ? 'success' : 'danger', RestoreManager::summaryLine($result + ['channel' => 'web', 'finished_at' => $result['finished_at'] ?? date('c')])); ?>
         <?php endif; ?>
 
         <?php if ($state['state'] === 'MISSING'): ?>
@@ -182,7 +162,13 @@ fiAdminNav('backups');
                 <h2>Database "<?= fiE($dbName) ?>"</h2>
                 <p><?php fiBackupBadge($state['state']); ?> <?= fiE((string) $state['message']) ?></p>
                 <?php if ($lastRestore): ?>
-                    <p class="small text-muted mb-0">Last restore: <?= fiWhen($lastRestore['finished_at'] ?? null) ?> (<?= fiE((string) ($lastRestore['status'] ?? '')) ?>)</p>
+                    <p class="mb-0">
+                        <strong>Last restore:</strong> <?php fiBackupBadge((string) $lastRestore['status']); ?>
+                        <span class="badge text-bg-light"><?= ($lastRestore['channel'] ?? 'web') === 'terminal' ? 'Terminal' : 'Website' ?></span><br>
+                        <small class="text-muted"><?= fiE(RestoreManager::summaryLine($lastRestore)) ?></small>
+                    </p>
+                <?php else: ?>
+                    <p class="small text-muted mb-0">No restore has been done yet.</p>
                 <?php endif; ?>
             </div>
             <div class="fi-action-card">
@@ -246,7 +232,7 @@ fiAdminNav('backups');
                         <tbody>
                         <?php foreach ($candidates as $c): ?>
                             <tr>
-                                <td data-label="File"><span class="fi-cell-name"><?= fiE($c['kind'] . '/' . $c['name']) ?></span></td>
+                                <td data-label="File"><span class="fi-cell-name"><?= fiE($c['kind'] . '/' . $c['name']) ?></span><?php if (($c['type'] ?? '') === 'pre-restore'): ?><br><small class="text-muted">Safety copy made automatically before a restore</small><?php endif; ?></td>
                                 <td data-label="Time"><?= fiWhen(date('c', (int) $c['mtime'])) ?></td>
                                 <td data-label="Where"><?= $c['source'] === 'remote' ? 'Remote only' : 'This computer' ?></td>
                                 <td data-label="Size"><?= fiBytes($c['size']) ?></td>
@@ -299,13 +285,16 @@ fiAdminNav('backups');
                                             <?php endif; ?>
                                         </td>
                                         <td data-label="Time"><?= fiWhen($r['started_at'] ?? null) ?></td>
-                                        <td data-label="Type"><?= fiE((string) ($r['type'] ?? '')) ?></td>
+                                        <td data-label="Type"><?= ($r['type'] ?? '') === 'pre-restore' ? 'Safety copy' : fiE((string) ($r['type'] ?? '')) ?></td>
                                         <td data-label="Size"><?= isset($r['size']) ? fiBytes($r['size']) : '–' ?></td>
                                         <td data-label="Result"><?php fiBackupBadge($r['status'] ?? ''); ?></td>
                                         <td data-label="Validation"><?php fiBackupBadge($r['validation']['status'] ?? 'NOT_RUN'); ?></td>
                                         <td data-label="Remote"><?php fiBackupBadge($r['remote']['status'] ?? ''); ?></td>
                                         <td data-label="Restore">
-                                            <?= $restores ? 'Restored ' . fiWhen((string) end($restores)['at']) : '–' ?>
+                                            <?php if ($restores): $lastOne = end($restores); ?>
+                                                <?php fiBackupBadge((string) ($lastOne['status'] ?? 'SUCCESS')); ?>
+                                                <small class="text-muted d-block"><?= ($lastOne['channel'] ?? (strncmp((string) ($lastOne['by'] ?? ''), 'cli:', 4) === 0 ? 'terminal' : 'web')) === 'terminal' ? 'Terminal' : 'Website' ?>, <?= fiWhen((string) ($lastOne['at'] ?? '')) ?></small>
+                                            <?php else: ?>–<?php endif; ?>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>

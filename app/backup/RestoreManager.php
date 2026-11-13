@@ -131,11 +131,30 @@ final class RestoreManager
         return $items;
     }
 
+    /** The same one-line status text for the website and the terminal. */
+    public static function summaryLine(array $rec): string
+    {
+        $via = ($rec['channel'] ?? 'web') === 'terminal' ? 'terminal' : 'website';
+        $when = !empty($rec['finished_at']) ? date('d M Y, H:i', (int) strtotime((string) $rec['finished_at'])) : '-';
+        $file = !empty($rec['file']) ? $rec['file'] : 'a backup';
+
+        if (($rec['status'] ?? '') === 'SUCCESS') {
+            $text = 'Restored ' . $file . ' from the ' . $via . ' on ' . $when . '.';
+            if (!empty($rec['old_database'])) {
+                $text .= ' Previous database kept as "' . $rec['old_database'] . '".';
+            }
+            return $text;
+        }
+
+        return 'Restore of ' . $file . ' from the ' . $via . ' failed on ' . $when . '. ' . (string) ($rec['error'] ?? '') . ' Nothing was replaced.';
+    }
+
     /** Most recent restore (or null). */
     public static function lastRestore(): ?array
     {
         foreach (BackupStore::listRestores(20) as $item) {
-            if (($item['mode'] ?? '') === 'main') {
+            if (($item['mode'] ?? '') === 'main' && ($item['status'] ?? '') !== 'REFUSED') {
+                $item['channel'] = $item['channel'] ?? (strncmp((string) ($item['requested_by'] ?? ''), 'cli:', 4) === 0 ? 'terminal' : 'web');
                 return $item;
             }
         }
@@ -246,9 +265,9 @@ final class RestoreManager
         $rec = self::finish($rec);
         $lock->release();
 
-        if ($rec['status'] === 'SUCCESS' && !empty($rec['run_id'])) {
+        if (in_array($rec['status'], ['SUCCESS', 'FAILED'], true) && !empty($rec['run_id'])) {
             BackupStore::updateRun($rec['run_id'], static function (array $run) use ($rec) {
-                $run['restores'][] = ['id' => $rec['id'], 'at' => $rec['finished_at'], 'by' => $rec['requested_by'], 'status' => 'SUCCESS', 'database' => $rec['database']];
+                $run['restores'][] = ['id' => $rec['id'], 'at' => $rec['finished_at'], 'by' => $rec['requested_by'], 'channel' => $rec['channel'], 'status' => $rec['status'], 'database' => $rec['database']];
                 return $run;
             });
         }
@@ -368,6 +387,7 @@ final class RestoreManager
             'file' => $kind !== '' && $name !== '' ? $kind . '/' . $name : null,
             'source' => ($opts['source'] ?? 'local') === 'remote' ? 'remote' : 'local',
             'requested_by' => isset($opts['by']) ? substr((string) $opts['by'], 0, 80) : null,
+            'channel' => strncmp((string) ($opts['by'] ?? ''), 'cli:', 4) === 0 ? 'terminal' : 'web',
             'started_at' => BackupStore::now(),
             'finished_at' => null,
             'state_before' => null,
@@ -403,7 +423,8 @@ final class RestoreManager
 
     private static function abort(array $rec, string $message): array
     {
-        $rec['status'] = 'FAILED';
+        // Refused before anything started (e.g. wrong confirmation): not a real restore attempt.
+        $rec['status'] = 'REFUSED';
         $rec['error'] = $message;
         $rec['finished_at'] = BackupStore::now();
         try {
@@ -525,6 +546,8 @@ final class RestoreManager
             @chmod($final, 0600);
             file_put_contents($final . '.sha256', $sha . '  ' . $name . "\n");
 
+            $check = BackupManager::validateDump($final);
+
             $run = [
                 'id' => BackupStore::newRunId(),
                 'type' => 'pre-restore',
@@ -536,9 +559,9 @@ final class RestoreManager
                 'file' => 'daily/' . $name,
                 'size' => (int) filesize($final),
                 'sha256' => $sha,
-                'validation' => ['status' => 'NOT_RUN', 'tables' => 0, 'message' => ''],
+                'validation' => ['status' => $check['ok'] ? 'PASSED' : 'FAILED', 'tables' => count($check['tables']), 'message' => $check['ok'] ? '' : $check['message']],
                 'local' => ['status' => 'SUCCESS', 'error' => null],
-                'remote' => ['driver' => 'none', 'status' => 'NOT_CONFIGURED', 'attempts' => 0],
+                'remote' => ['driver' => 'none', 'status' => 'NOT_APPLICABLE', 'attempts' => 0],
                 'error' => null,
                 'restores' => [],
             ];
