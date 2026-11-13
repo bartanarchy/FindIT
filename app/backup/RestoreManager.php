@@ -103,7 +103,7 @@ final class RestoreManager
                 $driver = RemoteFactory::create();
                 $have = array_map(static fn($f) => $f['kind'] . '/' . $f['name'], $items);
 
-                foreach (['daily', 'weekly'] as $kind) {
+                foreach (['daily'] as $kind) {
                     foreach ($driver->listFiles($kind) as $remoteFile) {
                         if (in_array($kind . '/' . $remoteFile['name'], $have, true)) {
                             continue;
@@ -166,7 +166,7 @@ final class RestoreManager
     // ======================================================================
 
     /**
-     * @param array $opts kind (daily|weekly), name, source (local|remote), by, confirm
+     * @param array $opts kind (daily), name, source (local|remote), by, confirm
      * @return array restore record (status SUCCESS or FAILED, steps, error)
      */
     public static function restoreMain(array $opts): array
