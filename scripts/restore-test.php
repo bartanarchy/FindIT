@@ -16,7 +16,7 @@ require_once dirname(__DIR__) . '/app/backup/bootstrap.php';
 
 $opts = ['by' => 'cli:restore-test'];
 foreach (array_slice($argv, 1) as $arg) {
-    if (preg_match('/^--file=(daily|weekly)\/(findit_[A-Za-z0-9_.-]+\.dump)$/', $arg, $m)) {
+    if (preg_match('/^--file=(daily)\/(findit_[A-Za-z0-9_.-]+\.dump)$/', $arg, $m)) {
         $opts += ['kind' => $m[1], 'name' => $m[2], 'source' => 'local'];
     } else {
         fwrite(STDERR, "Unknown or invalid option: $arg\n");
