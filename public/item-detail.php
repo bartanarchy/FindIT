@@ -80,7 +80,26 @@ $isOwnReport = $item
     && (int) $viewer['id'] === (int) $item['id_user_pelapor']
     && $viewer['role'] === 'student';
 
-    
+
+// A student can claim an item only once; a rejected claim blocks any new one.
+$hasClaimed = false;
+if ($item && $viewer && $viewer['role'] === 'student') {
+    try {
+        $claimedStmt = $pdo->prepare(
+            'SELECT 1 FROM public.claim
+             WHERE id_item = :item_id AND id_user_pengaju = :user_id
+             LIMIT 1'
+        );
+        $claimedStmt->execute([
+            'item_id' => (int) $item['kode_laporan'],
+            'user_id' => (int) $viewer['id'],
+        ]);
+        $hasClaimed = (bool) $claimedStmt->fetchColumn();
+    } catch (PDOException $e) {
+        error_log('[FindIT] Failed to check existing claim: ' . $e->getMessage());
+    }
+}
+
 fiHead($pageTitle);
 fiPublicNav($viewer, 'home');
 ?>
@@ -162,6 +181,14 @@ fiPublicNav($viewer, 'home');
                             </p>
                             <a href="index.php" class="btn btn-outline-secondary w-100">
                                 Browse other items
+                            </a>
+                        <?php elseif ($hasClaimed): ?>
+                            <p class="text-secondary mb-3">
+                                You have already submitted a claim for this item. Each student
+                                can claim an item only once, and a rejected claim cannot be repeated.
+                            </p>
+                            <a href="my-claims.php" class="btn btn-outline-secondary w-100">
+                                View my claims
                             </a>
                         <?php elseif ($isAvailable): ?>
                             <p class="text-secondary">
