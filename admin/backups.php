@@ -171,28 +171,10 @@ fiAdminNav('backups');
                     <p class="small text-muted mb-0">No restore has been done yet.</p>
                 <?php endif; ?>
             </div>
-            <div class="fi-action-card">
-                <h2>If the website cannot open</h2>
-                <p>Run this on the server computer. It works even when the database is missing:</p>
-                <p><code>php scripts\restore.php --list</code><br><code>php scripts\restore.php --file=daily/&lt;file&gt;</code></p>
-            </div>
+
         </section>
 
-        <section aria-labelledby="flow-heading" class="mb-4">
-            <div class="fi-table-panel p-3">
-                <h2 id="flow-heading" class="h5 mb-3">How a restore works</h2>
-                <ol class="mb-0">
-                    <li>Pick a backup file (from this computer, or from the remote copy if the local one is gone).</li>
-                    <li>FindIT reads the database name (<strong><?= fiE($dbName) ?></strong>) from <code>.env</code> and connects to the PostgreSQL maintenance database, not to <?= fiE($dbName) ?>, which may be deleted.</li>
-                    <li>The file is checked: checksum and the 7 required tables.</li>
-                    <li>A new empty database is created (UTF-8), so nothing existing is touched.</li>
-                    <li>The backup is loaded into it, then tables, rows and relations are checked.</li>
-                    <li>The website account is given access to the restored tables.</li>
-                    <li>The new database is put in place as <strong><?= fiE($dbName) ?></strong>. If an old one existed it is renamed, not deleted.</li>
-                    <li>The result of every step is shown here and written to the restore log.</li>
-                </ol>
-            </div>
-        </section>
+     
 
         <?php if ($selected !== null && $webEnabled && ($result['status'] ?? '') !== 'SUCCESS'): ?>
             <section aria-labelledby="confirm-heading">
