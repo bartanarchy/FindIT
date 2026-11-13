@@ -158,8 +158,10 @@ final class RestoreManager
         $rec = self::newRecord('main', $database, $opts);
 
         // Explicit confirmation: the exact database name must be typed.
-        if (!isset($opts['confirm']) || !hash_equals($database, (string) $opts['confirm'])) {
-            return self::abort($rec, 'The confirmation text does not match the database name. Nothing was changed.');
+        // Extra spaces and upper/lower case are forgiven; anything else must be the exact name.
+        $typed = trim((string) ($opts['confirm'] ?? ''));
+        if ($typed === '' || !hash_equals(strtolower($database), strtolower($typed))) {
+            return self::abort($rec, 'The confirmation text does not match the database name "' . $database . '". Type exactly ' . $database . ' and try again. Nothing was changed.');
         }
 
         $lock = OperationLock::acquire('restore', $rec['id']);
