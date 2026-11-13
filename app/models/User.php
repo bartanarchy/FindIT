@@ -12,7 +12,8 @@ class User
 
     public function findByEmail(string $email): ?array
     {
-        // look up the student account using its campus email.
+        // The email is stored encrypted, so we look it up through its blind index
+        // (a keyed hash) instead of comparing the text itself.
         $sql = '
             SELECT
                 id_user,
@@ -21,19 +22,19 @@ class User
                 password_user,
                 role_user
             FROM public."User"
-            WHERE LOWER(email_kampus) = LOWER(:email)
+            WHERE email_bidx = :bidx
             LIMIT 1
         ';
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([
-            'email' => trim($email),
+            'bidx' => Crypto::blindIndex(normalizeCampusEmail($email)),
         ]);
 
         $user = $stmt->fetch();
 
         // null when no student account matches this email.
-        return $user ?: null;
+        return $user ? Crypto::decryptRow($user) : null;
     }
 
     public function create(
@@ -43,35 +44,45 @@ class User
         string $phone,
         string $studentId
     ): int {
-        // database stores the password hash, never the original password.
+        $email = normalizeCampusEmail($email);
+        $studentId = trim($studentId);
+
+        // Personal data is encrypted before it reaches the database.
+        // The password is stored only as a hash, never the original password.
         $sql = '
             INSERT INTO public."User" (
                 email_kampus,
+                email_bidx,
                 name_user,
                 password_user,
                 no_telp,
                 role_user,
-                id_nim
+                id_nim,
+                nim_bidx
             )
             VALUES (
                 :email,
+                :email_bidx,
                 :name,
                 :password,
                 :phone,
                 :role,
-                :student_id
+                :student_id,
+                :nim_bidx
             )
             RETURNING id_user
         ';
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([
-            'email' => trim($email),
-            'name' => trim($name),
+            'email' => Crypto::protect('email_kampus', $email),
+            'email_bidx' => Crypto::blindIndex($email),
+            'name' => Crypto::protect('name_user', trim($name)),
             'password' => $passwordHash,
-            'phone' => trim($phone),
+            'phone' => Crypto::protect('no_telp', trim($phone)),
             'role' => 'student',
-            'student_id' => trim($studentId),
+            'student_id' => Crypto::protect('id_nim', $studentId),
+            'nim_bidx' => Crypto::blindIndex($studentId),
         ]);
 
         // PostgreSQL returns the new student's ID after the insert.
@@ -81,16 +92,11 @@ class User
     public function emailExists(string $email): bool
     {
         // We check this first to give the student a clearer registration error.
-        $sql = '
-            SELECT 1
-            FROM public."User"
-            WHERE LOWER(email_kampus) = LOWER(:email)
-            LIMIT 1
-        ';
-
-        $stmt = $this->pdo->prepare($sql);
+        $stmt = $this->pdo->prepare(
+            'SELECT 1 FROM public."User" WHERE email_bidx = :bidx LIMIT 1'
+        );
         $stmt->execute([
-            'email' => trim($email),
+            'bidx' => Crypto::blindIndex(normalizeCampusEmail($email)),
         ]);
 
         return $stmt->fetchColumn() !== false;
@@ -99,16 +105,11 @@ class User
     public function studentIdExists(string $studentId): bool
     {
         // Student IDs are unique too, so one student can't register twice with the same ID.
-        $sql = '
-            SELECT 1
-            FROM public."User"
-            WHERE id_nim = :student_id
-            LIMIT 1
-        ';
-
-        $stmt = $this->pdo->prepare($sql);
+        $stmt = $this->pdo->prepare(
+            'SELECT 1 FROM public."User" WHERE nim_bidx = :bidx LIMIT 1'
+        );
         $stmt->execute([
-            'student_id' => trim($studentId),
+            'bidx' => Crypto::blindIndex($studentId),
         ]);
 
         return $stmt->fetchColumn() !== false;
