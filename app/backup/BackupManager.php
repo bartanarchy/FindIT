@@ -24,7 +24,7 @@ final class BackupManager
     // ======================================================================
 
     /**
-     * @param string $type auto (daily, plus weekly when due) | daily | weekly | manual
+     * @param string $type auto | daily | manual (auto and daily are the scheduled kinds)
      * @param array  $opts force, trigger (task|cli|dashboard), by, retries, retry_delay
      * @return array{status:string,message:string,runs:array}
      */
@@ -32,7 +32,7 @@ final class BackupManager
     {
         BackupConfig::applyTimezone();
 
-        if (!in_array($type, ['auto', 'daily', 'weekly', 'manual'], true)) {
+        if (!in_array($type, ['auto', 'daily', 'manual'], true)) {
             throw new InvalidArgumentException('Unknown backup type.');
         }
 
@@ -69,25 +69,7 @@ final class BackupManager
 
             $runs = [];
 
-            if ($type === 'weekly') {
-                $weeklyFile = BackupConfig::dir('weekly') . '/' . self::weeklyName();
-                if (is_file($weeklyFile) && !$force) {
-                    return ['status' => 'SKIPPED', 'message' => 'This week already has a weekly backup.', 'runs' => []];
-                }
-                $runs[] = self::makeBackup('weekly', $context);
-            } else {
-                $kind = $type === 'manual' ? 'manual' : 'daily';
-                $primary = self::makeBackup($kind, $context);
-                $runs[] = $primary;
-
-                $weeklyDue = $type === 'auto'
-                    && $primary['local']['status'] === 'SUCCESS'
-                    && !is_file(BackupConfig::dir('weekly') . '/' . self::weeklyName());
-
-                if ($weeklyDue) {
-                    $runs[] = self::makeWeeklyCopy($primary, $context);
-                }
-            }
+            $runs[] = self::makeBackup($type === 'manual' ? 'manual' : 'daily', $context);
 
             // Earlier copies that never reached the remote get another chance now.
             foreach (self::retryPendingRemote(array_column($runs, 'id')) as $retried) {
@@ -139,11 +121,6 @@ final class BackupManager
         }
     }
 
-    private static function weeklyName(): string
-    {
-        return 'findit_' . date('o-\WW') . '.dump';
-    }
-
     private static function newRecord(string $type, array $context): array
     {
         return [
@@ -174,7 +151,7 @@ final class BackupManager
         ];
     }
 
-    /** Make one new dump (daily, manual or weekly). */
+    /** Make one new dump (daily or manual). */
     private static function makeBackup(string $kind, array $context): array
     {
         $run = self::newRecord($kind, $context);
@@ -184,9 +161,8 @@ final class BackupManager
         $partFile = null;
 
         try {
-            $dirKind = $kind === 'weekly' ? 'weekly' : 'daily';
-            $name = $kind === 'weekly' ? self::weeklyName() : 'findit_' . date('Y-m-d_His') . '.dump';
-            $dir = BackupConfig::dir($dirKind);
+            $name = 'findit_' . date('Y-m-d_His') . '.dump';
+            $dir = BackupConfig::dir('daily');
             $final = $dir . '/' . $name;
             $partFile = $dir . '/.' . $name . '.part';
 
@@ -228,7 +204,7 @@ final class BackupManager
             @chmod($final, 0600);
             file_put_contents($final . '.sha256', $sha . '  ' . $name . "\n");
 
-            $run['file'] = $dirKind . '/' . $name;
+            $run['file'] = 'daily/' . $name;
             $run['size'] = $size;
             $run['sha256'] = $sha;
             $run['table_counts'] = self::tableCounts();
@@ -247,51 +223,6 @@ final class BackupManager
 
         if ($partFile !== null) {
             @unlink($partFile);
-        }
-
-        if ($run['local']['status'] === 'SUCCESS') {
-            self::sendRemote($run);
-        } else {
-            $run['remote']['status'] = 'SKIPPED';
-        }
-
-        return self::finish($run);
-    }
-
-    /** The weekly backup is a verified copy of today's daily dump. */
-    private static function makeWeeklyCopy(array $daily, array $context): array
-    {
-        $run = self::newRecord('weekly', $context);
-        $run['pg_dump_version'] = $daily['pg_dump_version'];
-        BackupStore::saveRun($run);
-
-        try {
-            $name = self::weeklyName();
-            $dir = BackupConfig::dir('weekly');
-            $source = BackupConfig::dir('daily') . '/' . basename((string) $daily['file']);
-            $part = $dir . '/.' . $name . '.part';
-
-            if (!@copy($source, $part)) {
-                throw new BackupFailure('The weekly copy could not be created.', 'FILESYSTEM');
-            }
-            if (hash_file('sha256', $part) !== $daily['sha256']) {
-                @unlink($part);
-                throw new BackupFailure('The weekly copy does not match the daily backup.', 'CHECKSUM');
-            }
-
-            rename($part, $dir . '/' . $name);
-            @chmod($dir . '/' . $name, 0600);
-            file_put_contents($dir . '/' . $name . '.sha256', $daily['sha256'] . '  ' . $name . "\n");
-
-            $run['file'] = 'weekly/' . $name;
-            $run['size'] = $daily['size'];
-            $run['sha256'] = $daily['sha256'];
-            $run['table_counts'] = $daily['table_counts'] ?? null;
-            $run['validation'] = $daily['validation'];
-            $run['local'] = ['status' => 'SUCCESS', 'error' => null];
-        } catch (BackupFailure $e) {
-            $run['local'] = ['status' => 'FAILED', 'error' => $e->getMessage()];
-            $run['error'] = $e->getMessage();
         }
 
         if ($run['local']['status'] === 'SUCCESS') {
@@ -651,7 +582,6 @@ final class BackupManager
         $deleted = [];
         $limits = [
             'daily' => BackupConfig::keepDailyDays() * 86400,
-            'weekly' => BackupConfig::keepWeeklyWeeks() * 7 * 86400,
         ];
 
         foreach ($limits as $kind => $maxAge) {
@@ -791,7 +721,7 @@ final class BackupManager
         }
 
         $items = [];
-        foreach (['daily', 'weekly'] as $kind) {
+        foreach (['daily'] as $kind) {
             foreach (glob(BackupConfig::dir($kind) . '/findit_*.dump') ?: [] as $path) {
                 $name = basename($path);
                 if (!RemoteFactory::safeName($name)) {
@@ -805,7 +735,7 @@ final class BackupManager
                     'size' => (int) filesize($path),
                     'mtime' => (int) filemtime($path),
                     'has_checksum' => is_file($path . '.sha256'),
-                    'type' => $run['type'] ?? ($kind === 'weekly' ? 'weekly' : 'unknown'),
+                    'type' => $run['type'] ?? 'unknown',
                     'validation' => $run['validation']['status'] ?? 'NOT_RUN',
                     'remote' => $run['remote']['status'] ?? 'UNKNOWN',
                     'run_id' => $run['id'] ?? null,
@@ -819,7 +749,7 @@ final class BackupManager
 
     /**
      * Safe full path of a local backup file. Rejects anything that is not exactly
-     * one of our own files inside daily/ or weekly/ (path traversal, symlinks, odd names).
+     * one of our own files inside daily/ (path traversal, symlinks, odd names).
      */
     public static function resolveLocal(string $kind, string $name): string
     {
@@ -916,7 +846,6 @@ final class BackupManager
             'pending_remote' => $pendingRemote,
             'counts' => [
                 'daily' => count(array_filter($files, static fn($f) => $f['kind'] === 'daily')),
-                'weekly' => count(array_filter($files, static fn($f) => $f['kind'] === 'weekly')),
                 'total' => count($files),
                 'bytes' => $totalSize,
             ],
