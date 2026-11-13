@@ -34,6 +34,11 @@ $dbPass = $env['DB_PASS'] ?? '1';
 define('RECAPTCHA_SITE_KEY', $env['RECAPTCHA_SITE_KEY'] ?? '');
 define('RECAPTCHA_SECRET_KEY', $env['RECAPTCHA_SECRET_KEY'] ?? '');
 
+// Security keys also come from .env (never from the database).
+// APP_ENC_KEY encrypts the sensitive database columns. Keep a copy of it
+// somewhere safe and OFFLINE: without it, encrypted data cannot be recovered.
+define('APP_ENC_KEY', trim($env['APP_ENC_KEY'] ?? ''));
+
 // Validate the configuration before attempting to connect.
 if (
     $dbHost === '' ||
@@ -76,10 +81,31 @@ try {
         '[FindIT] PostgreSQL connection failed: ' . $e->getMessage()
     );
 
-    // Throw a safe error message without exposing database details.
-    throw new RuntimeException(
-        'Database connection failed. Please check the server configuration.',
-        0,
-        $e
-    );
+    // Command-line scripts keep the plain error.
+    if (PHP_SAPI === 'cli') {
+        throw new RuntimeException(
+            'Database connection failed. Please check the server configuration.',
+            0,
+            $e
+        );
+    }
+
+    // On the website the database may be missing on purpose (waiting for a restore).
+    // Show a friendly page instead of a crash. Only Backup Management keeps working,
+    // because it does not need the database.
+    $pdo = null;
+    define('FINDIT_DB_DOWN', true);
+
+    require_once dirname(__DIR__) . '/app/helpers/crypto.php';
+    require_once dirname(__DIR__) . '/app/helpers/campus_email.php';
+
+    $script = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+    if (substr($script, -17) !== '/admin/backups.php') {
+        require_once dirname(__DIR__) . '/app/helpers/maintenance.php';
+        fiDatabaseDownPage();
+    }
 }
+
+// Security helpers used by almost every page (encryption, campus email rule).
+require_once dirname(__DIR__) . '/app/helpers/crypto.php';
+require_once dirname(__DIR__) . '/app/helpers/campus_email.php';
