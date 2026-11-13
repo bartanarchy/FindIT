@@ -40,7 +40,7 @@ check(extension_loaded('openssl') ? 'ok' : 'fail', 'PHP extension openssl');
 // folders
 try {
     $base = BackupConfig::baseDir();
-    foreach (['daily', 'weekly', 'logs', 'config'] as $sub) {
+    foreach (['daily', 'logs'] as $sub) {
         BackupConfig::dir($sub);
     }
     $probe = $base . '/.write-test';
@@ -136,7 +136,34 @@ if (BackupConfig::env('APP_ENC_KEY') === '') {
     check('ok', 'APP_ENC_KEY is set', 'keep an OFFLINE copy: backups of encrypted columns are unreadable without it');
 }
 
-check('ok', 'Retention', BackupConfig::keepDailyDays() . ' days of daily backups, ' . BackupConfig::keepWeeklyWeeks() . ' weeks of weekly backups');
+check('ok', 'Retention', BackupConfig::keepDailyDays() . ' days of daily backups are kept (the newest valid one is never deleted)');
+
+// last backup
+try {
+    BackupConfig::applyTimezone();
+    $last = BackupManager::summary()['last_local'] ?? null;
+    if ($last === null) {
+        check('warn', 'Last backup', 'none yet. Run: php scripts/backup.php --type=manual');
+    } else {
+        $ageHours = (time() - (int) strtotime((string) ($last['finished_at'] ?? ''))) / 3600;
+        $when = date('d M Y, H:i', (int) strtotime((string) $last['finished_at']));
+        check($ageHours > 36 ? 'warn' : 'ok', 'Last backup', $when . ($ageHours > 36 ? ' - older than 36 hours, is the scheduled task running?' : ''));
+    }
+} catch (Throwable $e) {
+    check('warn', 'Last backup', 'could not read the backup history');
+}
+
+// automatic backups (Windows Task Scheduler)
+if (BackupConfig::isWindows()) {
+    $task = ProcessRunner::run(['schtasks', '/Query', '/TN', 'FindIT Backup'], [], 15);
+    if ($task['exit'] === 0) {
+        check('ok', 'Automatic backup', 'task "FindIT Backup" is installed in Task Scheduler');
+    } else {
+        check('warn', 'Automatic backup', 'not installed. Run: powershell -ExecutionPolicy Bypass -File scripts\\windows\\install-scheduler.ps1');
+    }
+}
+
+check('ok', 'Restore from the website', BackupConfig::bool('RESTORE_WEB_ENABLED') ? 'enabled (RESTORE_WEB_ENABLED=true)' : 'off (the terminal restore always works)');
 
 echo PHP_EOL . ($problems ? "$problems problem(s) to fix." : 'No blocking problems.') . ($warnings ? " $warnings warning(s)." : '') . PHP_EOL;
 exit($problems ? 1 : 0);
