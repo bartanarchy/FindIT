@@ -146,13 +146,14 @@ try {
                     $insertStmt->execute([
                         'reporter_id' => $userId,
                         'category_id' => $categoryId,
-                        'name' => $name,
-                        'location' => $location,
+                        // item text is stored encrypted.
+                        'name' => Crypto::protect('nama_barang', $name),
+                        'location' => Crypto::protect('detail_lokasi', $location),
                         'date_found' => $dateFound,
                         'general_features' => $generalFeatures !== ''
-                            ? $generalFeatures
+                            ? Crypto::protect('ciri_umum', $generalFeatures)
                             : null,
-                        'distinctive_features' => $distinctiveFeatures,
+                        'distinctive_features' => Crypto::protect('ciri_khusus', $distinctiveFeatures),
                         'status' => 'Found'
                     ]);
 

@@ -62,7 +62,7 @@ try {
          ORDER BY created_at DESC, id_notification DESC'
     );
     $notificationStmt->execute(['user_id' => $userId]);
-    $notifications = $notificationStmt->fetchAll();
+    $notifications = Crypto::decryptRows($notificationStmt->fetchAll());
 } catch (PDOException $e) {
     error_log('[FindIT] Failed to load notifications: ' . $e->getMessage());
     $errorMessage = 'Unable to load notifications. Please try again later.';
