@@ -59,6 +59,10 @@ if ($webEnabled) {
         $selected = $find((string) $src['kind'], (string) $src['name'], (string) $src['source']);
     }
 
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'restore' && $selected === null) {
+        $result = ['status' => 'FAILED', 'error' => 'That backup file is not in the list any more. Reload the page and choose it again.', 'steps' => []];
+    }
+
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'restore' && $selected !== null) {
         if (!verifyCsrfToken((string) ($_POST['csrf_token'] ?? ''))) {
             $result = ['status' => 'FAILED', 'error' => 'The form expired. Please try again.'];
