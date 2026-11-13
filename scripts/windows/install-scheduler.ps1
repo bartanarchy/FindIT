@@ -82,4 +82,4 @@ Write-Host "Created '$($names[0])' (daily $DailyAt + at sign-in) and '$($names[1
 Write-Host "PHP: $PhpExe"
 Write-Host "Project: $project"
 Write-Host 'Try it now:  Start-ScheduledTask -TaskName "FindIT Backup"'
-Write-Host 'Then check:  php scripts\backup-check.php   and the Backup History page.'
+Write-Host 'Then check:  php scripts\backup-check.php   and the Backup page in the admin menu.'
