@@ -44,6 +44,11 @@ final class Crypto
                 'catatan_admin', 'kode_pengambilan', 'lokasi_pengambilan',
             ],
         ],
+        'pickup' => [
+            'pk' => 'id_pickup',
+            'table' => 'public.pickup_token',
+            'columns' => ['token_enc'],
+        ],
         'notification' => [
             'pk' => 'id_notification',
             'table' => 'public.notification',

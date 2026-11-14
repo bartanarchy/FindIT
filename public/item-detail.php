@@ -74,6 +74,21 @@ $pageTitle = $item
     : 'Item Not Found - FindIT';
 $isAvailable = $item && $item['status_barang'] === 'Found';
 
+// An approved claim means the item is waiting for pickup: closed for new claims.
+if ($isAvailable) {
+    try {
+        $approvedStmt = $pdo->prepare(
+            "SELECT 1 FROM public.claim WHERE id_item = :item_id AND status_klaim = 'Approved' LIMIT 1"
+        );
+        $approvedStmt->execute(['item_id' => (int) $item['kode_laporan']]);
+        if ($approvedStmt->fetchColumn()) {
+            $isAvailable = false;
+        }
+    } catch (PDOException $e) {
+        error_log('[FindIT] Failed to check approved claim: ' . $e->getMessage());
+    }
+}
+
 // The student who reported this item cannot claim it.
 $isOwnReport = $item
     && $viewer

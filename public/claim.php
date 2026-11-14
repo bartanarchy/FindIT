@@ -146,6 +146,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwnReport) {
                     );
                 }
 
+                // Once a claim is approved, nobody else can claim the item (it stays
+                // "Found" until pickup, so the status alone is not enough).
+                $approvedStmt = $pdo->prepare(
+                    "SELECT 1 FROM public.claim
+                     WHERE id_item = :item_id AND status_klaim = 'Approved'
+                     LIMIT 1"
+                );
+                $approvedStmt->execute(['item_id' => $itemId]);
+
+                if ($approvedStmt->fetchColumn()) {
+                    throw new RuntimeException(
+                        'This item is no longer available for claims.'
+                    );
+                }
+
                 // One claim per student per item: any earlier claim (pending,
                 // approved or rejected) blocks a new one. A rejected student
                 // cannot try again for the same item.
@@ -241,6 +256,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwnReport) {
             }
         }
     }
+}
+
+// An item with an approved claim is waiting for pickup and is closed for new claims.
+$hasApprovedClaim = false;
+try {
+    $approvedCheck = $pdo->prepare(
+        "SELECT 1 FROM public.claim WHERE id_item = :item_id AND status_klaim = 'Approved' LIMIT 1"
+    );
+    $approvedCheck->execute(['item_id' => $itemId]);
+    $hasApprovedClaim = (bool) $approvedCheck->fetchColumn();
+} catch (PDOException $e) {
+    error_log('[FindIT] Failed to check approved claim: ' . $e->getMessage());
 }
 
 // Has this student already claimed this item? (any status: one claim per item)
@@ -371,7 +398,7 @@ fiPublicNav(currentUser(), 'home');
                     <a href="index.php" class="btn btn-outline-secondary">Browse other items</a>
                 </div>
 
-            <?php elseif ($item['status_barang'] !== 'Found'): ?>
+            <?php elseif ($item['status_barang'] !== 'Found' || $hasApprovedClaim): ?>
 
                 <?php
                 fiAlert(
