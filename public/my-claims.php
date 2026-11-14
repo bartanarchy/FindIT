@@ -33,6 +33,7 @@ try {
             i.nama_barang,
             i.detail_lokasi,
             i.tanggal_ditemukan,
+            i.status_barang,
             cat.name_category
         FROM public.claim AS c
         LEFT JOIN public.item AS i
@@ -46,6 +47,7 @@ try {
     $stmt = $pdo->prepare($sql);
     $stmt->execute(['user_id' => $userId]);
     $claims = Crypto::decryptRows($stmt->fetchAll());
+
 } catch (PDOException $e) {
     error_log('[FindIT] Failed to load student claims: ' . $e->getMessage());
     $errorMessage = 'Unable to load your claim history. Please try again later.';
@@ -176,9 +178,21 @@ fiPublicNav(currentUser(), 'claims');
                                     </div>
 
                                     <span class="fi-field-label">Pickup location</span>
-                                    <p class="fi-field-value mb-0">
+                                    <p class="fi-field-value mb-3">
                                         <?= fiOr($claim['lokasi_pengambilan'] ?? '', 'Not assigned') ?>
                                     </p>
+
+                                    <?php if ($pickupCode !== ''): ?>
+                                        <?php
+                                        // The QR code contains the pickup code itself.
+                                        fiQrBlock(
+                                            $pickupCode,
+                                            'FindIT-' . $pickupCode,
+                                            $pickupCode,
+                                            'Scanning this QR code shows your pickup code. Download it and keep it as proof of your claim.'
+                                        );
+                                        ?>
+                                    <?php endif; ?>
                                 </section>
 
                             <?php elseif ($status === 'Rejected'): ?>
