@@ -15,6 +15,20 @@ function sendResetPasswordEmail(string $toEmail, string $toName, string $resetUr
     $fromAddress = defined('MAIL_FROM_ADDRESS') ? MAIL_FROM_ADDRESS : 'noreply@findit.local';
     $fromName = defined('MAIL_FROM_NAME') ? MAIL_FROM_NAME : 'FindIT';
 
+    // Strip spaces if a 16-character Gmail App Password was pasted with spaces.
+    if (stripos($host, 'gmail.com') !== false) {
+        $password = str_replace(' ', '', $password);
+    }
+
+    // Gmail rejects/spams .local sender addresses; default From to MAIL_USERNAME when set.
+    if (
+        $username !== '' &&
+        filter_var($username, FILTER_VALIDATE_EMAIL) &&
+        ($fromAddress === '' || str_ends_with(strtolower($fromAddress), '.local'))
+    ) {
+        $fromAddress = $username;
+    }
+
     $safeName = trim(preg_replace('/[\r\n]+/', ' ', $toName) ?? '');
     $safeFromName = trim(preg_replace('/[\r\n]+/', ' ', $fromName) ?? 'FindIT');
     $safeTo = trim(preg_replace('/[\r\n]+/', '', $toEmail) ?? '');
@@ -119,7 +133,8 @@ function sendResetPasswordEmail(string $toEmail, string $toName, string $resetUr
             if (!$sendCmd($socket, 'STARTTLS', [220])) {
                 return false;
             }
-            if (!stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) {
+            $cryptoMethod = STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT | STREAM_CRYPTO_METHOD_TLSv1_3_CLIENT;
+            if (!stream_socket_enable_crypto($socket, true, $cryptoMethod)) {
                 error_log('[FindIT] SMTP STARTTLS negotiation failed.');
                 return false;
             }
