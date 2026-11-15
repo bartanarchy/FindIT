@@ -173,6 +173,45 @@
         });
     }
 
+    /* 3b. The NIM field must be 12 digits and equal the NIM in the campus email. */
+    function initNimMatch() {
+        document.querySelectorAll('[data-nim-email]').forEach(function (nimField) {
+            var emailField = document.querySelector(nimField.getAttribute('data-nim-email'));
+            if (!emailField) {
+                return;
+            }
+            var feedback = nimField.parentNode.querySelector('[data-nim-feedback]');
+
+            function check() {
+                var nim = nimField.value;
+                var emailNim = emailField.value.trim().toLowerCase().split('@')[0];
+                var message = '';
+
+                if (!/^[0-9]{12}$/.test(nim)) {
+                    message = 'Your NIM must be exactly 12 digits.';
+                } else if (/^[0-9]{12}$/.test(emailNim) && nim !== emailNim) {
+                    message = 'Your NIM must be the same as the NIM in your campus email.';
+                }
+
+                nimField.setCustomValidity(message);
+                if (feedback && message) {
+                    feedback.textContent = message;
+                }
+            }
+
+            // Only digits are allowed in the NIM field.
+            nimField.addEventListener('input', function () {
+                var digits = nimField.value.replace(/[^0-9]/g, '');
+                if (digits !== nimField.value) {
+                    nimField.value = digits;
+                }
+                check();
+            });
+            emailField.addEventListener('input', check);
+            check();
+        });
+    }
+
     /* 4. Success messages fade out by themselves. */
     function initAutoHide() {
         document.querySelectorAll('.alert[data-autohide]').forEach(function (alertBox) {
@@ -277,6 +316,7 @@
         initForms();
         initCounters();
         initPasswordToggles();
+        initNimMatch();
         initAutoHide();
         initCopyButtons();
         initHomeFilter();
