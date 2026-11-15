@@ -236,7 +236,7 @@ if ($claim && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if ($decision === 'approve') {
                     $notificationMessage = 'Your claim for "' . $itemName
-                        . '" has been approved. Please check your pickup details on the My Claims page.';
+                        . '" has been approved. Open the My Claims page to see your QR code. It is the proof that this item is yours.';
                 } else {
                     $notificationMessage = 'Your claim for "' . $itemName
                         . '" has been rejected. Admin note: ' . $adminNote;
@@ -266,26 +266,19 @@ if ($claim && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 // Update the item and resolve competing claims only after approval.
                 if ($decision === 'approve') {
-                    // Mark the item as claimed while it is still available.
-                    $itemUpdateStmt = $pdo->prepare(
-                        '
-                        UPDATE public.item
-                        SET status_barang = :item_status
-                        WHERE kode_laporan = :item_id
-                          AND status_barang = :current_status
-                        '
+                    // Approval issues the pickup code (the student's QR code contains it)
+                    // and marks the item as Claimed so nobody else can claim it.
+                    $claimItemStmt = $pdo->prepare(
+                        "UPDATE public.item
+                         SET status_barang = 'Claimed'
+                         WHERE kode_laporan = :item_id
+                           AND status_barang = 'Found'"
                     );
+                    $claimItemStmt->execute(['item_id' => $itemId]);
 
-                    $itemUpdateStmt->execute([
-                        'item_status' => 'Claimed',
-                        'item_id' => $itemId,
-                        'current_status' => 'Found',
-                    ]);
-
-                    // Roll back everything if the item status could not be changed.
-                    if ($itemUpdateStmt->rowCount() !== 1) {
+                    if ($claimItemStmt->rowCount() !== 1) {
                         throw new RuntimeException(
-                            'The item status could not be updated. Please try again.'
+                            'This item is no longer available for approval.'
                         );
                     }
 
@@ -727,6 +720,19 @@ fiAdminNav('claims');
                                     </dd>
                                 </div>
                             </dl>
+
+                            <?php if (($claim['status_klaim'] ?? '') === 'Approved' && !empty($claim['kode_pengambilan'])): ?>
+                                <div class="mb-3">
+                                    <?php
+                                    // The same QR code the student sees: it contains the pickup code.
+                                    fiQrBlock(
+                                        (string) $claim['kode_pengambilan'],
+                                        'FindIT-' . (string) $claim['kode_pengambilan'],
+                                        (string) $claim['kode_pengambilan']
+                                    );
+                                    ?>
+                                </div>
+                            <?php endif; ?>
 
                             <p class="small mb-0">
                                 This claim can no longer be approved or rejected using this form.

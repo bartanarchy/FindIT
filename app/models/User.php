@@ -114,4 +114,17 @@ class User
 
         return $stmt->fetchColumn() !== false;
     }
+
+    public function updatePassword(int $userId, string $passwordHash): bool
+    {
+        $stmt = $this->pdo->prepare(
+            'UPDATE public."User" SET password_user = :password WHERE id_user = :id_user'
+        );
+        $stmt->execute([
+            'password' => $passwordHash,
+            'id_user' => $userId,
+        ]);
+
+        return $stmt->rowCount() === 1;
+    }
 }

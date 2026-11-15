@@ -3,12 +3,15 @@
 require_once dirname(__DIR__, 2) . '/config/config.php';
 require_once dirname(__DIR__) . '/models/User.php';
 require_once dirname(__DIR__) . '/models/Admin.php';
+require_once dirname(__DIR__) . '/models/PasswordReset.php';
+require_once dirname(__DIR__) . '/helpers/mailer.php';
 
 class AuthController
 {
     private PDO $pdo;
     private User $userModel;
     private Admin $adminModel;
+    private PasswordReset $passwordResetModel;
 
     public function __construct()
     {
@@ -21,6 +24,7 @@ class AuthController
         $this->pdo = $pdo;
         $this->userModel = new User($this->pdo);
         $this->adminModel = new Admin($this->pdo);
+        $this->passwordResetModel = new PasswordReset($this->pdo);
     }
 
     public function register(array $data): array
@@ -236,5 +240,156 @@ class AuthController
         }
 
         session_destroy();
+    }
+
+    public function requestPasswordReset(string $email): array
+    {
+        $email = normalizeCampusEmail($email);
+
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return [
+                'success' => false,
+                'message' => 'Please enter a valid campus email address.',
+            ];
+        }
+
+        if (!isCampusStudentEmail($email)) {
+            return [
+                'success' => false,
+                'message' => CAMPUS_EMAIL_ERROR,
+            ];
+        }
+
+        // Always return a generic message so we don't reveal which emails are registered.
+        $genericSuccess = [
+            'success' => true,
+            'message' => 'If that campus email is registered, we have sent a password reset link. Please check your inbox.',
+        ];
+
+        try {
+            $user = $this->userModel->findByEmail($email);
+
+            if ($user === null) {
+                return $genericSuccess;
+            }
+
+            $rawToken = bin2hex(random_bytes(32));
+            $tokenHash = hash('sha256', $rawToken);
+
+            $this->passwordResetModel->createToken((int) $user['id_user'], $tokenHash, 30);
+
+            $baseUrl = defined('APP_URL') ? APP_URL : 'http://localhost/FindIT/public';
+            $resetUrl = $baseUrl . '/reset-password.php?token=' . urlencode($rawToken);
+
+            $sent = sendResetPasswordEmail(
+                $user['email_kampus'],
+                $user['name_user'] ?? 'Student',
+                $resetUrl
+            );
+
+            if (!$sent) {
+                error_log('[FindIT] Failed to send password reset email to user ID ' . (int) $user['id_user']);
+            }
+
+            return $genericSuccess;
+        } catch (Throwable $e) {
+            error_log('[FindIT] Password reset request error: ' . $e->getMessage());
+
+            return [
+                'success' => false,
+                'message' => 'Unable to process your request right now. Please try again.',
+            ];
+        }
+    }
+
+    public function validateResetToken(string $rawToken): bool
+    {
+        $rawToken = trim($rawToken);
+        if (!preg_match('/^[a-f0-9]{64}$/', $rawToken)) {
+            return false;
+        }
+
+        try {
+            return $this->passwordResetModel->findValidByTokenHash(hash('sha256', $rawToken)) !== null;
+        } catch (PDOException $e) {
+            error_log('[FindIT] Token validation error: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function resetPassword(string $rawToken, string $password, string $confirmPassword): array
+    {
+        $rawToken = trim($rawToken);
+
+        if (!preg_match('/^[a-f0-9]{64}$/', $rawToken)) {
+            return [
+                'success' => false,
+                'message' => 'This password reset link is invalid or has expired.',
+            ];
+        }
+
+        if ($password === '' || $confirmPassword === '') {
+            return [
+                'success' => false,
+                'message' => 'Please enter and confirm your new password.',
+            ];
+        }
+
+        if ($password !== $confirmPassword) {
+            return [
+                'success' => false,
+                'message' => 'The passwords do not match.',
+            ];
+        }
+
+        if (strlen($password) < 8) {
+            return [
+                'success' => false,
+                'message' => 'Your password must contain at least 8 characters.',
+            ];
+        }
+
+        $tokenHash = hash('sha256', $rawToken);
+
+        try {
+            $resetRow = $this->passwordResetModel->findValidByTokenHash($tokenHash);
+
+            if ($resetRow === null) {
+                return [
+                    'success' => false,
+                    'message' => 'This password reset link is invalid or has expired.',
+                ];
+            }
+
+            $this->pdo->beginTransaction();
+
+            if (!$this->passwordResetModel->markUsed((int) $resetRow['id_reset'])) {
+                $this->pdo->rollBack();
+                return [
+                    'success' => false,
+                    'message' => 'This password reset link has already been used.',
+                ];
+            }
+
+            $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+            $this->userModel->updatePassword((int) $resetRow['id_user'], $passwordHash);
+
+            $this->pdo->commit();
+
+            return [
+                'success' => true,
+                'message' => 'Your password has been updated. You can now sign in.',
+            ];
+        } catch (Throwable $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            error_log('[FindIT] Password reset failed: ' . $e->getMessage());
+
+            return [
+                'success' => false,
+                'message' => 'Could not update your password. Please try again.',
+            ];
+        }
     }
 }
