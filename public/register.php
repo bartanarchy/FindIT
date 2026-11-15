@@ -129,6 +129,7 @@ fiPublicNav(null, 'register');
                         value="<?= fiE($formData['email']) ?>"
                         placeholder="123456789012@student.polinema.ac.id"
                         pattern="[0-9]{12}@student\.polinema\.ac\.id"
+                        data-nim-source
                         title="Use your student email: 12-digit NIM@student.polinema.ac.id"
                         autocomplete="email"
                         required>
@@ -165,40 +166,56 @@ fiPublicNav(null, 'register');
                         maxlength="12"
                         inputmode="numeric"
                         pattern="[0-9]{12}"
+                        data-nim-email="#email"
+                        title="12 digits, and must be the same as the NIM in your campus email"
                         value="<?= fiE($formData['student_id']) ?>"
                         placeholder="12-digit NIM"
                         autocomplete="off"
                         required>
-                    <div class="invalid-feedback">Please enter your student ID.</div>
+                    <div class="invalid-feedback" data-nim-feedback>Enter your 12-digit NIM.</div>
                 </div>
 
                 <div class="col-12 col-sm-6">
                     <label for="password" class="form-label">Password</label>
-                    <input
-                        type="password"
-                        class="form-control"
-                        id="password"
-                        name="password"
-                        minlength="8"
-                        autocomplete="new-password"
-                        placeholder="At least 8 characters"
-                        required>
-                    <div class="invalid-feedback">Use at least 8 characters.</div>
+                    <div class="input-group has-validation">
+                        <input
+                            type="password"
+                            class="form-control"
+                            id="password"
+                            name="password"
+                            minlength="8"
+                            autocomplete="new-password"
+                            placeholder="At least 8 characters"
+                            required>
+                        <button
+                            type="button"
+                            class="btn fi-pass-toggle"
+                            data-toggle-password="#password"
+                            aria-label="Show or hide password">Show</button>
+                        <div class="invalid-feedback">Use at least 8 characters.</div>
+                    </div>
                 </div>
 
                 <div class="col-12 col-sm-6">
                     <label for="confirm_password" class="form-label">Confirm password</label>
-                    <input
-                        type="password"
-                        class="form-control"
-                        id="confirm_password"
-                        name="confirm_password"
-                        minlength="8"
-                        data-match="#password"
-                        autocomplete="new-password"
-                        placeholder="Repeat your password"
-                        required>
-                    <div class="invalid-feedback">The passwords do not match.</div>
+                    <div class="input-group has-validation">
+                        <input
+                            type="password"
+                            class="form-control"
+                            id="confirm_password"
+                            name="confirm_password"
+                            minlength="8"
+                            data-match="#password"
+                            autocomplete="new-password"
+                            placeholder="Repeat your password"
+                            required>
+                        <button
+                            type="button"
+                            class="btn fi-pass-toggle"
+                            data-toggle-password="#confirm_password"
+                            aria-label="Show or hide confirm password">Show</button>
+                        <div class="invalid-feedback">The passwords do not match.</div>
+                    </div>
                 </div>
             </div>
 
