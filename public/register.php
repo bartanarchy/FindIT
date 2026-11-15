@@ -127,9 +127,9 @@ fiPublicNav(null, 'register');
                         name="email"
                         maxlength="100"
                         value="<?= fiE($formData['email']) ?>"
-                        placeholder="2341720001@student.polinema.ac.id"
-                        pattern="[0-9]+@student\.polinema\.ac\.id"
-                        title="Use your student email: NIM@student.polinema.ac.id"
+                        placeholder="123456789012@student.polinema.ac.id"
+                        pattern="[0-9]{12}@student\.polinema\.ac\.id"
+                        title="Use your student email: 12-digit NIM@student.polinema.ac.id"
                         autocomplete="email"
                         required>
                     <div class="form-text">
@@ -162,9 +162,11 @@ fiPublicNav(null, 'register');
                         class="form-control"
                         id="student_id"
                         name="student_id"
-                        maxlength="20"
+                        maxlength="12"
+                        inputmode="numeric"
+                        pattern="[0-9]{12}"
                         value="<?= fiE($formData['student_id']) ?>"
-                        placeholder="Enter your NIM"
+                        placeholder="12-digit NIM"
                         autocomplete="off"
                         required>
                     <div class="invalid-feedback">Please enter your student ID.</div>
