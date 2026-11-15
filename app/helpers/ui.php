@@ -174,14 +174,14 @@ function fiAlert(string $type, string $message, bool $autoHide = false): void
     $icons = ['success' => 'check-circle', 'danger' => 'x-circle', 'warning' => 'alert-triangle', 'info' => 'info'];
     $labels = ['success' => 'Done', 'danger' => 'Something went wrong', 'warning' => 'Heads up', 'info' => 'Note'];
     $hide = $autoHide ? ' data-autohide="6000"' : '';
-    echo '<div class="alert alert-' . $type . ' fi-alert fi-alert--rich" role="' . $role . '"' . $hide . '>'
-        . '<span class="fi-alert-icon" aria-hidden="true">' . fiIcon($icons[$type], 20) . '</span>'
-        . '<div class="fi-alert-text"><strong class="fi-alert-label">' . fiE($labels[$type]) . '</strong>'
-        . '<span class="fi-alert-message">' . fiE($message) . '</span></div>'
-        . '<button type="button" class="fi-alert-close" data-bs-dismiss="alert" aria-label="Dismiss message">'
-        . fiIcon('x', 16) . '</button>'
-        . ($autoHide ? '<span class="fi-alert-timer" aria-hidden="true"></span>' : '')
-        . '</div>' . "\n";
+    // echo '<div class="alert alert-' . $type . ' fi-alert fi-alert--rich" role="' . $role . '"' . $hide . '>'
+    //     . '<span class="fi-alert-icon" aria-hidden="true">' . fiIcon($icons[$type], 20) . '</span>'
+    //     . '<div class="fi-alert-text"><strong class="fi-alert-label">' . fiE($labels[$type]) . '</strong>'
+    //     . '<span class="fi-alert-message">' . fiE($message) . '</span></div>'
+    //     . '<button type="button" class="fi-alert-close" data-bs-dismiss="alert" aria-label="Dismiss message">'
+    //     . fiIcon('x', 16) . '</button>'
+    //     . ($autoHide ? '<span class="fi-alert-timer" aria-hidden="true"></span>' : '')
+    //     . '</div>' . "\n";
 }
 function fiEmptyState(string $title, string $text, string $actionHtml = '', string $mark = '+'): void
 {
