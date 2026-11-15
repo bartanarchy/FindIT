@@ -1,6 +1,40 @@
 (function () {
     'use strict';
 
+    /* Reads the dialog texts from the button, then opens the FindIT confirm dialog. */
+    function askConfirm(button, message) {
+        var title = button.getAttribute('data-confirm-title');
+        var text = message;
+
+        // No explicit title: use the first sentence ("Approve this claim?") as the title.
+        if (!title) {
+            var cut = message.indexOf('? ');
+            if (cut > 0) {
+                title = message.slice(0, cut + 1);
+                text = message.slice(cut + 2);
+            } else {
+                title = 'Are you sure?';
+            }
+        }
+
+        var tone = button.getAttribute('data-confirm-tone');
+        if (!tone) {
+            tone = button.value === 'reject' || /danger/.test(button.className) ? 'danger' : 'info';
+        }
+
+        if (!window.FindIT || !window.FindIT.confirm) {
+            return Promise.resolve(window.confirm(title + ' ' + text));
+        }
+
+        return window.FindIT.confirm({
+            title: title,
+            message: text,
+            tone: tone,
+            confirmLabel: button.getAttribute('data-confirm-label') || 'Yes, continue',
+            cancelLabel: button.getAttribute('data-cancel-label') || 'Go back'
+        });
+    }
+
     /* 1. Form validation, loading state, and confirmation. */
     function initForms() {
         document.querySelectorAll('form.needs-validation').forEach(function (form) {
@@ -34,11 +68,31 @@
                 }
 
                 // Ask for confirmation on irreversible actions, after validation passes.
+                // A styled FindIT dialog is shown (not the browser's "localhost says" box).
+                // When the person confirms, the form is submitted again and passes through here.
                 var message = submitter && submitter.getAttribute('data-confirm');
-                if (message && !window.confirm(message)) {
+                if (message && form.getAttribute('data-confirmed') !== '1') {
                     event.preventDefault();
+                    askConfirm(submitter, message).then(function (ok) {
+                        if (!ok) {
+                            return;
+                        }
+                        form.setAttribute('data-confirmed', '1');
+                        if (form.requestSubmit) {
+                            form.requestSubmit(submitter);
+                        } else {
+                            // Very old browsers: keep the clicked button's value, then submit.
+                            var keep = document.createElement('input');
+                            keep.type = 'hidden';
+                            keep.name = submitter.name;
+                            keep.value = submitter.value;
+                            form.appendChild(keep);
+                            form.submit();
+                        }
+                    });
                     return;
                 }
+                form.removeAttribute('data-confirmed');
 
                 // Prevent double submits. The delay keeps the clicked button's value in the form data.
                 window.setTimeout(function () {
@@ -363,8 +417,132 @@
         return el;
     }
 
+    /* -------------------------------------------------------- confirm dialog */
+    /**
+     * A modern replacement for window.confirm(). Returns a Promise: true (confirmed) or false.
+     * options: title, message, tone (success|danger|warning|info), confirmLabel, cancelLabel.
+     * Esc, clicking outside and the cancel button all mean "no". Focus stays inside the dialog
+     * and returns to the button that opened it. Text is inserted with textContent only.
+     */
+    function confirmDialog(options) {
+        return new Promise(function (resolve) {
+            var tone = ['success', 'danger', 'warning', 'info'].indexOf(options.tone) !== -1 ? options.tone : 'info';
+            var opener = document.activeElement;
+            var uid = 'fi-modal-' + Date.now();
+
+            var overlay = document.createElement('div');
+            overlay.className = 'fi-modal-overlay';
+
+            var dialog = document.createElement('div');
+            dialog.className = 'fi-modal fi-modal--' + tone;
+            dialog.setAttribute('role', 'alertdialog');
+            dialog.setAttribute('aria-modal', 'true');
+            dialog.setAttribute('aria-labelledby', uid + '-title');
+            dialog.setAttribute('aria-describedby', uid + '-text');
+            dialog.tabIndex = -1;
+
+            var icon = document.createElement('span');
+            icon.className = 'fi-modal-icon';
+            icon.setAttribute('aria-hidden', 'true');
+            // Dangerous actions get the warning triangle; others use their normal tone icon.
+            icon.innerHTML = tone === 'danger' ? ICONS.warning : ICONS[tone];
+
+            var title = document.createElement('h2');
+            title.className = 'fi-modal-title';
+            title.id = uid + '-title';
+            title.textContent = options.title || 'Are you sure?';
+
+            var text = document.createElement('p');
+            text.className = 'fi-modal-text';
+            text.id = uid + '-text';
+            text.textContent = options.message || '';
+
+            var actions = document.createElement('div');
+            actions.className = 'fi-modal-actions';
+
+            var cancel = document.createElement('button');
+            cancel.type = 'button';
+            cancel.className = 'btn btn-outline-secondary';
+            cancel.textContent = options.cancelLabel || 'Go back';
+
+            var ok = document.createElement('button');
+            ok.type = 'button';
+            ok.className = 'btn ' + (tone === 'danger' ? 'fi-btn-danger' : 'btn-primary');
+            ok.textContent = options.confirmLabel || 'Yes, continue';
+
+            actions.appendChild(cancel);
+            actions.appendChild(ok);
+            dialog.appendChild(icon);
+            dialog.appendChild(title);
+            if (options.message) {
+                dialog.appendChild(text);
+            }
+            dialog.appendChild(actions);
+            overlay.appendChild(dialog);
+            document.body.appendChild(overlay);
+            document.body.classList.add('fi-modal-open');
+
+            var closed = false;
+
+            function close(result) {
+                if (closed) {
+                    return;
+                }
+                closed = true;
+                document.removeEventListener('keydown', onKey, true);
+                document.body.classList.remove('fi-modal-open');
+                overlay.classList.add('is-leaving');
+                window.setTimeout(function () {
+                    if (overlay.parentNode) {
+                        overlay.parentNode.removeChild(overlay);
+                    }
+                }, 160);
+                if (opener && opener.focus) {
+                    opener.focus();
+                }
+                resolve(result);
+            }
+
+            function onKey(event) {
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    close(false);
+                    return;
+                }
+                // Keep Tab inside the two buttons.
+                if (event.key === 'Tab') {
+                    var first = cancel;
+                    var last = ok;
+                    if (event.shiftKey && document.activeElement === first) {
+                        event.preventDefault();
+                        last.focus();
+                    } else if (!event.shiftKey && document.activeElement === last) {
+                        event.preventDefault();
+                        first.focus();
+                    } else if (document.activeElement !== first && document.activeElement !== last) {
+                        event.preventDefault();
+                        first.focus();
+                    }
+                }
+            }
+
+            document.addEventListener('keydown', onKey, true);
+            cancel.addEventListener('click', function () { close(false); });
+            ok.addEventListener('click', function () { close(true); });
+            overlay.addEventListener('mousedown', function (event) {
+                if (event.target === overlay) {
+                    close(false);
+                }
+            });
+
+            // Dangerous action: start on the safe choice. Otherwise start on the main button.
+            (tone === 'danger' ? cancel : ok).focus();
+        });
+    }
+
     window.FindIT = window.FindIT || {};
     window.FindIT.toast = toast;
+    window.FindIT.confirm = confirmDialog;
 
     /* ----------------------------------------------------------------- bell */
     function initBell(root) {

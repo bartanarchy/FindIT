@@ -684,7 +684,10 @@ fiAdminNav('claims');
                                         name="decision"
                                         value="approve"
                                         class="btn btn-primary"
-                                        data-confirm="Approve this claim? Other pending claims for this item will be rejected.">
+                                        data-confirm="The student will get a pickup code and QR code. Other pending claims for this item will be rejected automatically."
+                                        data-confirm-title="Approve this claim?"
+                                        data-confirm-tone="success"
+                                        data-confirm-label="Yes, approve">
 
                                         Approve claim
                                     </button>
@@ -694,7 +697,10 @@ fiAdminNav('claims');
                                         name="decision"
                                         value="reject"
                                         class="btn btn-outline-danger"
-                                        data-confirm="Reject this claim? This cannot be undone from this form.">
+                                        data-confirm="The student will be notified and will see your admin note. This cannot be undone from this form."
+                                        data-confirm-title="Reject this claim?"
+                                        data-confirm-tone="danger"
+                                        data-confirm-label="Yes, reject">
 
                                         Reject claim
                                     </button>
