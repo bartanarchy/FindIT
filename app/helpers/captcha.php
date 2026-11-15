@@ -1,45 +1,55 @@
 <?php
 
-// this function ask the google reCAPTCHA server whether the token is valid or not. 
-function verifyRecaptcha(string $token): bool
+// Captcha answer is stored in session, on the server
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
+
+// code length is 5 char, and the code is valid for 5 mnt
+const CAPTCHA_LENGTH = 5;
+const CAPTCHA_LIFETIME = 300;
+
+// make random captcha code, store it in session, and return it.
+function generateCaptchaCode(): string
 {
-    // if the token or secret key is empty, we assume failure. 
-    // The secret key is defined in config/config.php and comes from .env.
-    if ($token === '' || RECAPTCHA_SECRET_KEY === '') {
+    // similar letters is intentionally removed to avoid confusion (0 and O, 1 and I).
+    $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    $maxIndex = strlen($alphabet) - 1;
+
+    $code = '';
+    for ($i = 0; $i < CAPTCHA_LENGTH; $i++) {
+        // random_int chooses random number that is safe for security purposes.
+        $code .= $alphabet[random_int(0, $maxIndex)];
+    }
+
+    // save the code along with its creation time.
+    $_SESSION['captcha'] = [
+        'code' => $code,
+        'created_at' => time(),
+    ];
+
+    return $code;
+}
+
+// check the visitor's answer. Return true if correct.
+function verifyCaptcha(string $answer): bool
+{
+    $stored = $_SESSION['captcha'] ?? null;
+
+    // code is immediately removed so it can only be used once.
+    unset($_SESSION['captcha']);
+
+    if (!is_array($stored) || empty($stored['code'])) {
         return false;
     }
 
-    // curl is a PHP library that can send HTTP requests.
-    $ch = curl_init('https://www.google.com/recaptcha/api/siteverify');
-
-    curl_setopt_array($ch, [
-        CURLOPT_POST => true, // send with POST method
-
-        // data to send to Google, including the secret key, the token from the user,
-        // and the user's IP address 
-        CURLOPT_POSTFIELDS => http_build_query([
-            'secret'   => RECAPTCHA_SECRET_KEY,
-            'response' => $token,
-            'remoteip' => $_SERVER['REMOTE_ADDR'] ?? '',
-        ]),
-
-        CURLOPT_RETURNTRANSFER => true, // save the response from Google as a string instead of printing it
-        CURLOPT_TIMEOUT => 5,           // wait at most 5 seconds for a response from Google
-    ]);
-
-    $response = curl_exec($ch);
-
-    // if the request failed, we log the error on the server and return false.
-    if ($response === false) {
-        // error_log is a PHP function that writes messages to the server's error log.
-        error_log('[FindIT] reCAPTCHA request failed: ' . curl_error($ch));
+    // if more than lifetime, the code is considered expired.
+    if (time() - (int) ($stored['created_at'] ?? 0) > CAPTCHA_LIFETIME) {
         return false;
     }
 
-    // google's response is a JSON string, 
-    // so we decode it into an associative array for easier access.
-    $data = json_decode($response, true);
+    // not case sensitive
+    $answer = strtoupper(trim($answer));
 
-    // the 'success' field in the response indicates whether the verification was successful.
-    return is_array($data) && ($data['success'] ?? false) === true;
+    return $answer !== '' && hash_equals($stored['code'], $answer);
 }
