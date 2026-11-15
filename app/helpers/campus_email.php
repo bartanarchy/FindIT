@@ -22,3 +22,16 @@ function isCampusStudentEmail(string $email): bool
 
 const CAMPUS_EMAIL_ERROR =
     'Please use your student email in the format NIM@student.polinema.ac.id.';
+
+//taking the NIM from the email address, if it is a valid campus student email.
+function campusEmailNim(string $email): ?string
+{
+    $email = normalizeCampusEmail($email);
+
+    if (!isCampusStudentEmail($email)) {
+        return null;
+    }
+
+    // strstr(..., true) mengambil bagian teks SEBELUM tanda "@".
+    return strstr($email, '@', true);
+}

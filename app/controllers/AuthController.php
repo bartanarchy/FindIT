@@ -60,6 +60,19 @@ class AuthController
                 'message' => CAMPUS_EMAIL_ERROR,
             ];
         }
+        $emailNim = campusEmailNim($email);
+        
+        if (
+            !preg_match('/\A[0-9]{12}\z/', $studentId) ||
+            $emailNim === null ||
+            $studentId !== $emailNim
+        ) {
+            return [
+                'success' => false,
+                'message' => 'Your student ID must be 12 digits and match the NIM in your campus email.',
+            ];
+        }
+        
 
         // we only accept valid email addresses and reasonable input lengths.
         if (
