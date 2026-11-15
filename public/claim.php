@@ -3,6 +3,7 @@
 require_once dirname(__DIR__) . '/config/config.php';
 require_once dirname(__DIR__) . '/app/helpers/auth.php';
 require_once dirname(__DIR__) . '/app/helpers/csrf.php';
+require_once dirname(__DIR__) . '/app/helpers/notifications.php';
 
 // Only logged-in students can submit a claim.
 requireRole('student');
@@ -208,6 +209,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwnReport) {
                             :distinctive_features,
                             :claim_status
                         )
+                        RETURNING id_claim
                     ';
 
                     $insertStmt = $pdo->prepare($insertSql);
@@ -220,6 +222,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwnReport) {
                         'last_seen' => Crypto::protect('terakhir_di_lihat', $formData['terakhir_di_lihat']),
                         'distinctive_features' => Crypto::protect('ciri_khusus_claim', $formData['ciri_khusus_claim']),
                         'claim_status' => 'Pending Verification',
+                    ]);
+
+                    // The claim now waits for an admin: tell the student it is under review.
+                    // (FindIT has no separate "review" status, so this follows the submission.)
+                    $newClaimId = (int) $insertStmt->fetchColumn();
+                    FiNotify::create($pdo, [
+                        'user_id' => $userId,
+                        'claim_id' => $newClaimId,
+                        'item_id' => $itemId,
+                        'type' => 'claim_review',
+                        'title' => 'Claim under review',
+                        'message' => 'Your claim for "' . (string) ($item['nama_barang'] ?? 'this item')
+                            . '" is being reviewed by an administrator. We will notify you when a decision is made.',
+                        'link' => 'my-claims.php#claim-' . $newClaimId,
+                        'dedupe_key' => 'claim:' . $newClaimId . ':review',
                     ]);
 
                     // Save the claim before redirecting.

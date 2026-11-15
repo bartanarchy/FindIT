@@ -117,7 +117,7 @@ fiPublicNav(currentUser(), 'claims');
                         $isApproved = $status === 'Approved';
                         $pickupCode = (string) ($claim['kode_pengambilan'] ?? '');
                         ?>
-                        <article class="fi-claim-card">
+                        <article class="fi-claim-card" id="claim-<?= (int) $claim['id_claim'] ?>">
                             <div class="fi-claim-head">
                                 <div>
                                     <h2 class="fi-claim-title">
