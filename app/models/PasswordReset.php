@@ -21,13 +21,13 @@ class PasswordReset
             $deleteStmt->execute(['id_user' => $userId]);
 
             $insertStmt = $this->pdo->prepare(
-                "INSERT INTO public.password_resets (id_user, token_hash, expires_at)
-                 VALUES (:id_user, :token_hash, NOW() + (:ttl || ' minutes')::interval)"
+                'INSERT INTO public.password_resets (id_user, token_hash, expires_at)
+                 VALUES (:id_user, :token_hash, NOW() + make_interval(mins => :ttl))'
             );
             $insertStmt->execute([
                 'id_user' => $userId,
                 'token_hash' => $tokenHash,
-                'ttl' => (string) $ttlMinutes,
+                'ttl' => $ttlMinutes,
             ]);
 
             $this->pdo->commit();
