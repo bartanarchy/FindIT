@@ -799,4 +799,62 @@
     document.addEventListener('DOMContentLoaded', function () {
         document.querySelectorAll('[data-fi-bell]').forEach(initBell);
     });
+
+    // check if the email is a campus email, and if so, extract the NIM (student ID) from it.
+    document.addEventListener('DOMContentLoaded', function () {
+        // File ini dimuat di semua halaman, jadi hanya jalan kalau form register ada.
+        var form = document.querySelector('form[action="register.php"]');
+        if (!form) {
+            return;
+        }
+
+        var email = form.querySelector('#email');
+        var studentId = form.querySelector('#student_id');
+        var feedback = studentId.parentElement.querySelector('.invalid-feedback');
+
+        function nimFromEmail() {
+            return email.value.trim().toLowerCase().split('@')[0];
+        }
+
+        var edited = studentId.value !== '' && studentId.value !== nimFromEmail();
+
+        function check() {
+            var value = studentId.value;
+            var message = '';
+
+            if (value !== '' && !/^[0-9]{12}$/.test(value)) {
+                message = 'Student ID must be exactly 12 digits.';
+            } else if (value !== '' && email.value.indexOf('@') !== -1 && value !== nimFromEmail()) {
+                message = 'Student ID must match the NIM in your campus email.';
+            }
+
+            studentId.setCustomValidity(message);
+
+            if (feedback) {
+                feedback.textContent = message !== '' ? message : 'Please enter your student ID.';
+            }
+        }
+
+        function onEmailChange() {
+            var nim = nimFromEmail();
+
+            if (!edited && /^[0-9]*$/.test(nim)) {
+                studentId.value = nim.slice(0, 12);
+            }
+            check();
+        }
+
+        email.addEventListener('input', onEmailChange);
+        email.addEventListener('change', onEmailChange); 
+
+        studentId.addEventListener('input', function () {
+            studentId.value = studentId.value.replace(/[^0-9]/g, '');
+
+            edited = studentId.value !== '' && studentId.value !== nimFromEmail();
+            check();
+        });
+
+        check();
+    });
+
 })();
