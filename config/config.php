@@ -29,6 +29,11 @@ $dbName = $env['DB_NAME'] ?? 'FindIT';
 $dbUser = $env['DB_USER'] ?? 'postgres';
 $dbPass = $env['DB_PASS'] ?? '1';
 
+// reCAPTCHA key is taken from .env file.
+// if the keys are not set, they will default to empty strings.
+define('RECAPTCHA_SITE_KEY', $env['RECAPTCHA_SITE_KEY'] ?? '');
+define('RECAPTCHA_SECRET_KEY', $env['RECAPTCHA_SECRET_KEY'] ?? '');
+
 // Security keys also come from .env (never from the database).
 // APP_ENC_KEY encrypts the sensitive database columns. Keep a copy of it
 // somewhere safe and OFFLINE: without it, encrypted data cannot be recovered.
@@ -39,7 +44,7 @@ define('APP_URL', rtrim(trim($env['APP_URL'] ?? 'http://localhost/FindIT/public'
 define('MAIL_HOST', trim($env['MAIL_HOST'] ?? '127.0.0.1'));
 define('MAIL_PORT', (int) ($env['MAIL_PORT'] ?? 1025));
 define('MAIL_USERNAME', trim($env['MAIL_USERNAME'] ?? ''));
-define('MAIL_PASSWORD', (string) ($env['MAIL_PASSWORD'] ?? ''));
+define('MAIL_PASSWORD', trim((string) ($env['MAIL_PASSWORD'] ?? '')));
 define('MAIL_ENCRYPTION', strtolower(trim($env['MAIL_ENCRYPTION'] ?? '')));
 define('MAIL_FROM_ADDRESS', trim($env['MAIL_FROM_ADDRESS'] ?? 'noreply@findit.local'));
 define('MAIL_FROM_NAME', trim($env['MAIL_FROM_NAME'] ?? 'FindIT'));
