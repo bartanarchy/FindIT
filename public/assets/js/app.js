@@ -800,3 +800,55 @@
         document.querySelectorAll('[data-fi-bell]').forEach(initBell);
     });
 })();
+
+/* Profile page: preview the chosen photo before it is uploaded. */
+(function () {
+    'use strict';
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var input = document.querySelector('[data-photo-input]');
+        var box = document.querySelector('[data-photo-preview]');
+        if (!input || !box || !window.URL || !URL.createObjectURL) {
+            return;
+        }
+
+        var maxBytes = 2 * 1024 * 1024;
+        var allowed = ['image/jpeg', 'image/png', 'image/webp'];
+        var objectUrl = null;
+
+        input.addEventListener('change', function () {
+            var file = input.files && input.files[0];
+            input.setCustomValidity('');
+
+            if (!file) {
+                return;
+            }
+            if (allowed.indexOf(file.type) === -1) {
+                input.setCustomValidity('Only JPG, PNG or WebP photos are allowed.');
+                input.reportValidity();
+                input.value = '';
+                return;
+            }
+            if (file.size > maxBytes) {
+                input.setCustomValidity('The photo is too large. The maximum size is 2 MB.');
+                input.reportValidity();
+                input.value = '';
+                return;
+            }
+
+            if (objectUrl) {
+                URL.revokeObjectURL(objectUrl);
+            }
+            objectUrl = URL.createObjectURL(file);
+
+            var face = box.querySelector('[data-fi-avatar]');
+            if (face) {
+                face.innerHTML = '';
+                var img = document.createElement('img');
+                img.src = objectUrl;
+                img.alt = '';
+                face.appendChild(img);
+            }
+        });
+    });
+})();

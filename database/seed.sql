@@ -57,5 +57,3 @@ WHERE status_klaim IN ('Menunggu Verifikasi', 'Disetujui', 'Ditolak');
 
 COMMIT;
 
-
--

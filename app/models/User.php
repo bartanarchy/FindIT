@@ -127,4 +127,42 @@ class User
 
         return $stmt->rowCount() === 1;
     }
+
+    public function findById(int $userId): ?array
+    {
+        // Used by the profile page. Personal columns are decrypted before they are returned.
+        $stmt = $this->pdo->prepare(
+            'SELECT id_user, email_kampus, name_user, id_nim, password_user
+             FROM public."User"
+             WHERE id_user = :id_user AND role_user = \'student\'
+             LIMIT 1'
+        );
+        $stmt->execute(['id_user' => $userId]);
+
+        $user = $stmt->fetch();
+
+        return $user ? Crypto::decryptRow($user) : null;
+    }
+
+    public function profileStats(int $userId): array
+    {
+        // My Reports  = items this student reported.
+        // My Claims   = claims this student submitted.
+        // Returned    = items this student reported that were handed back to their owner.
+        $stmt = $this->pdo->prepare(
+            'SELECT
+                (SELECT COUNT(*) FROM public.item WHERE id_user_pelapor = :u1) AS reports,
+                (SELECT COUNT(*) FROM public.claim WHERE id_user_pengaju = :u2) AS claims,
+                (SELECT COUNT(*) FROM public.item
+                  WHERE id_user_pelapor = :u3 AND status_barang = \'Claimed\') AS returned'
+        );
+        $stmt->execute(['u1' => $userId, 'u2' => $userId, 'u3' => $userId]);
+        $row = $stmt->fetch() ?: [];
+
+        return [
+            'reports' => (int) ($row['reports'] ?? 0),
+            'claims' => (int) ($row['claims'] ?? 0),
+            'returned' => (int) ($row['returned'] ?? 0),
+        ];
+    }
 }

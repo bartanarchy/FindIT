@@ -95,8 +95,10 @@ function fiPublicNav(?array $user, string $active = ''): void
     if ($role === 'student') {
         echo $link('report-item.php', 'Report found item', 'report', $active) . "\n";
         echo $link('my-claims.php', 'My claims', 'claims', $active) . "\n";
-        echo '<li class="nav-item d-none d-lg-block"><span class="fi-nav-user">'
-            . fiE($user['name'] ?? 'Student') . '</span></li>' . "\n";
+        echo '<li class="nav-item"><a class="fi-nav-profile' . ($active === 'profile' ? ' active' : '') . '" href="profile.php"'
+            . ($active === 'profile' ? ' aria-current="page"' : '') . '>'
+            . fiNavAvatar($user)
+            . '<span class="fi-nav-user">' . fiE($user['name'] ?? 'Student') . '</span></a></li>' . "\n";
         echo '<li class="nav-item ms-md-2"><a class="btn btn-outline-secondary btn-sm" href="logout.php">Sign out</a></li>' . "\n";
     } elseif ($role === 'admin') {
         echo '<li class="nav-item"><a class="nav-link" href="../admin/index.php">Admin dashboard</a></li>' . "\n";
@@ -111,6 +113,23 @@ function fiPublicNav(?array $user, string $active = ''): void
     echo '</nav>' . "\n";
     echo '</header>' . "\n";
 }
+/** Small round profile picture for the navbar. Falls back to the default icon if anything fails. */
+function fiNavAvatar(?array $user): string
+{
+    global $pdo;
+
+    require_once __DIR__ . '/avatar.php';
+
+    $info = ['type' => 'none', 'preset' => null, 'v' => 0];
+    $userId = (int) ($user['id'] ?? 0);
+
+    if ($userId > 0 && isset($pdo)) {
+        $info = FiAvatar::info($pdo, $userId);
+    }
+
+    return FiAvatar::render($info, 30, 'avatar.php');
+}
+
 function fiAdminNav(string $active = ''): void
 {
     $link = static function (string $href, string $label, string $key, string $active): string {

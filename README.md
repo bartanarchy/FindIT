@@ -237,3 +237,18 @@ Afterward, development will continue with authentication, claim submission, and 
 ---
 
 *FindIT — Helping students reconnect with their lost belongings.*
+
+
+*FindIT — Helping students reconnect with their lost belongings.*
+
+## Student Profile
+
+Signed-in students have a profile page (`public/profile.php`, linked from their name in the navbar):
+
+* Account overview (my reports, my claims, returned items) and personal information.
+* Profile photo: upload a JPG/PNG/WebP (max 2 MB, cropped to a square) or pick one of 8 built-in avatars.
+* Change password (current password required, minimum 8 characters).
+
+Setup: run `database/migrations/008_user_profile_photo.sql` once. Uploaded photos are re-encoded with PHP GD
+(enable `extension=gd` in php.ini) and stored encrypted in `public.user_photo`; they are served only to their
+owner through `public/avatar.php`.
