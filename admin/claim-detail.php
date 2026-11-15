@@ -3,6 +3,7 @@
 require_once dirname(__DIR__) . '/config/config.php';
 require_once dirname(__DIR__) . '/app/helpers/auth.php';
 require_once dirname(__DIR__) . '/app/helpers/csrf.php';
+require_once dirname(__DIR__) . '/app/helpers/notifications.php';
 
 // Only admins can access claim details.
 requireRole('admin');
@@ -227,42 +228,45 @@ if ($claim && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     );
                 }
 
-                // Prepare a notification for the student whose claim was reviewed.
-                $notificationTitle = $decision === 'approve'
-                    ? 'Claim Approved'
-                    : 'Claim Rejected';
-
-                $itemName = $claim['nama_barang'] ?? 'your reported item';
+                // Tell the student about the decision. This runs in the same transaction as the
+                // decision, and the dedupe key (claim + decision) means one decision = one
+                // notification, even if the request is repeated.
+                $itemName = trim((string) ($claim['nama_barang'] ?? '')) !== ''
+                    ? (string) $claim['nama_barang']
+                    : 'your reported item';
+                $claimantId = (int) $lockedClaim['id_user_pengaju'];
 
                 if ($decision === 'approve') {
-                    $notificationMessage = 'Your claim for "' . $itemName
-                        . '" has been approved. Open the My Claims page to see your QR code. It is the proof that this item is yours.';
+                    $approvedMessage = 'Your claim for "' . $itemName . '" has been approved. '
+                        . 'Open My Claims to see your pickup code and QR code.';
+                    if ($savedPickupLocation !== null && $savedPickupLocation !== '') {
+                        $approvedMessage .= ' Pickup location: ' . $savedPickupLocation . '.';
+                    }
+
+                    FiNotify::create($pdo, [
+                        'user_id' => $claimantId,
+                        'claim_id' => $claimId,
+                        'item_id' => $itemId > 0 ? $itemId : null,
+                        'type' => 'claim_approved',
+                        'title' => 'Claim approved',
+                        'message' => $approvedMessage,
+                        'link' => 'my-claims.php#claim-' . $claimId,
+                        'dedupe_key' => 'claim:' . $claimId . ':approved',
+                    ]);
                 } else {
-                    $notificationMessage = 'Your claim for "' . $itemName
-                        . '" has been rejected. Admin note: ' . $adminNote;
+                    // Show the admin's note to the claimant (kept short for the notification).
+                    FiNotify::create($pdo, [
+                        'user_id' => $claimantId,
+                        'claim_id' => $claimId,
+                        'item_id' => $itemId > 0 ? $itemId : null,
+                        'type' => 'claim_rejected',
+                        'title' => 'Claim rejected',
+                        'message' => 'Your claim for "' . $itemName . '" could not be approved. '
+                            . 'Admin note: ' . mb_strimwidth($adminNote, 0, 300, '...'),
+                        'link' => 'my-claims.php#claim-' . $claimId,
+                        'dedupe_key' => 'claim:' . $claimId . ':rejected',
+                    ]);
                 }
-
-                // Save the notification in the same transaction as the claim decision.
-                $notificationStmt = $pdo->prepare(
-                    'INSERT INTO public.notification (
-                        id_user,
-                        id_claim,
-                        title,
-                        message
-                    ) VALUES (
-                        :user_id,
-                        :claim_id,
-                        :title,
-                        :message
-                    )'
-                );
-
-                $notificationStmt->execute([
-                    'user_id' => (int) $lockedClaim['id_user_pengaju'],
-                    'claim_id' => $claimId,
-                    'title' => Crypto::protect('title', $notificationTitle),
-                    'message' => Crypto::protect('message', $notificationMessage),
-                ]);
 
                 // Update the item and resolve competing claims only after approval.
                 if ($decision === 'approve') {
@@ -316,14 +320,32 @@ if ($claim && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     $rejectedClaims = $rejectOtherClaimsStmt->fetchAll();
 
                     foreach ($rejectedClaims as $rejectedClaim) {
-                        $notificationStmt->execute([
+                        FiNotify::create($pdo, [
                             'user_id' => (int) $rejectedClaim['id_user_pengaju'],
                             'claim_id' => (int) $rejectedClaim['id_claim'],
-                            'title' => Crypto::protect('title', 'Claim Rejected'),
-                            'message' => Crypto::protect(
-                                'message',
-                                'Your claim has been rejected because this item has already been claimed by another student.'
-                            ),
+                            'item_id' => $itemId,
+                            'type' => 'claim_rejected',
+                            'title' => 'Claim rejected',
+                            'message' => 'Your claim for "' . $itemName . '" could not be approved because '
+                                . 'this item has already been returned to another student.',
+                            'link' => 'my-claims.php#claim-' . (int) $rejectedClaim['id_claim'],
+                            'dedupe_key' => 'claim:' . (int) $rejectedClaim['id_claim'] . ':rejected',
+                        ]);
+                    }
+
+                    // Let the student who found and reported the item know it reached its owner.
+                    $reporterId = (int) ($lockedItem['id_user_pelapor'] ?? 0);
+                    if ($reporterId > 0 && $reporterId !== $claimantId) {
+                        FiNotify::create($pdo, [
+                            'user_id' => $reporterId,
+                            'claim_id' => null,
+                            'item_id' => $itemId,
+                            'type' => 'item_claimed',
+                            'title' => 'Your found item was returned',
+                            'message' => 'The item you reported, "' . $itemName . '", has been claimed by its '
+                                . 'owner. Thank you for helping a fellow student.',
+                            'link' => 'item-detail.php?id=' . $itemId,
+                            'dedupe_key' => 'item:' . $itemId . ':returned',
                         ]);
                     }
                 }
