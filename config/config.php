@@ -39,6 +39,16 @@ define('RECAPTCHA_SECRET_KEY', $env['RECAPTCHA_SECRET_KEY'] ?? '');
 // somewhere safe and OFFLINE: without it, encrypted data cannot be recovered.
 define('APP_ENC_KEY', trim($env['APP_ENC_KEY'] ?? ''));
 
+// Base URL & SMTP settings for student password reset emails.
+define('APP_URL', rtrim(trim($env['APP_URL'] ?? 'http://localhost/FindIT/public'), '/'));
+define('MAIL_HOST', trim($env['MAIL_HOST'] ?? '127.0.0.1'));
+define('MAIL_PORT', (int) ($env['MAIL_PORT'] ?? 1025));
+define('MAIL_USERNAME', trim($env['MAIL_USERNAME'] ?? ''));
+define('MAIL_PASSWORD', (string) ($env['MAIL_PASSWORD'] ?? ''));
+define('MAIL_ENCRYPTION', strtolower(trim($env['MAIL_ENCRYPTION'] ?? '')));
+define('MAIL_FROM_ADDRESS', trim($env['MAIL_FROM_ADDRESS'] ?? 'noreply@findit.local'));
+define('MAIL_FROM_NAME', trim($env['MAIL_FROM_NAME'] ?? 'FindIT'));
+
 // Validate the configuration before attempting to connect.
 if (
     $dbHost === '' ||
