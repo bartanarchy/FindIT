@@ -174,14 +174,14 @@ function fiAlert(string $type, string $message, bool $autoHide = false): void
     $icons = ['success' => 'check-circle', 'danger' => 'x-circle', 'warning' => 'alert-triangle', 'info' => 'info'];
     $labels = ['success' => 'Done', 'danger' => 'Something went wrong', 'warning' => 'Heads up', 'info' => 'Note'];
     $hide = $autoHide ? ' data-autohide="6000"' : '';
-    // echo '<div class="alert alert-' . $type . ' fi-alert fi-alert--rich" role="' . $role . '"' . $hide . '>'
-    //     . '<span class="fi-alert-icon" aria-hidden="true">' . fiIcon($icons[$type], 20) . '</span>'
-    //     . '<div class="fi-alert-text"><strong class="fi-alert-label">' . fiE($labels[$type]) . '</strong>'
-    //     . '<span class="fi-alert-message">' . fiE($message) . '</span></div>'
-    //     . '<button type="button" class="fi-alert-close" data-bs-dismiss="alert" aria-label="Dismiss message">'
-    //     . fiIcon('x', 16) . '</button>'
-    //     . ($autoHide ? '<span class="fi-alert-timer" aria-hidden="true"></span>' : '')
-    //     . '</div>' . "\n";
+    echo '<div class="alert alert-' . $type . ' fi-alert fi-alert--rich" role="' . $role . '"' . $hide . '>'
+        . '<span class="fi-alert-icon" aria-hidden="true">' . fiIcon($icons[$type], 20) . '</span>'
+        . '<div class="fi-alert-text"><strong class="fi-alert-label">' . fiE($labels[$type]) . '</strong>'
+        . '<span class="fi-alert-message">' . fiE($message) . '</span></div>'
+        . '<button type="button" class="fi-alert-close" data-bs-dismiss="alert" aria-label="Dismiss message">'
+        . fiIcon('x', 16) . '</button>'
+        . ($autoHide ? '<span class="fi-alert-timer" aria-hidden="true"></span>' : '')
+        . '</div>' . "\n";
 }
 function fiEmptyState(string $title, string $text, string $actionHtml = '', string $mark = '+'): void
 {
@@ -274,7 +274,7 @@ function fiIcon(string $name, int $size = 18): string
 /**
  * The bell + dropdown shared by students (their notifications) and admins (live alerts).
  * Options: mode, endpoint, csrf, count, severity, itemsHtml, extra (data attributes),
- * title, footerHref, footerLabel, emptyTitle, emptyText, active, markAll.
+ * title, footerHref, footerLabel, emptyTitle, emptyText, active.
  */
 function fiBellMarkup(array $o): string
 {
@@ -298,10 +298,6 @@ function fiBellMarkup(array $o): string
 
     $html .= '<div class="dropdown-menu dropdown-menu-end fi-bell-menu" aria-labelledby="fiBellBtn-' . fiE($o['mode']) . '">';
     $html .= '<div class="fi-bell-head"><h2 class="fi-bell-title">' . fiE($o['title']) . '</h2>';
-    if (!empty($o['markAll'])) {
-        $html .= '<button type="button" class="fi-bell-markall" data-bell-markall' . ($count > 0 ? '' : ' hidden')
-            . '>Mark all as read</button>';
-    }
     $html .= '</div>';
 
     $html .= '<ul class="fi-notif-list" data-bell-list' . ($hasItems ? '' : ' hidden') . '>' . $o['itemsHtml'] . '</ul>';
@@ -356,7 +352,6 @@ function fiStudentBell(?array $user, string $active = ''): string
         'emptyTitle' => 'You are all caught up',
         'emptyText' => 'Decisions about your claims will show up here.',
         'active' => $active === 'notifications',
-        'markAll' => true,
     ]);
 }
 
@@ -401,6 +396,5 @@ function fiAdminBell(): string
         'emptyTitle' => 'All clear',
         'emptyText' => 'Nothing needs your attention right now.',
         'active' => false,
-        'markAll' => false,
     ]);
 }

@@ -16,6 +16,15 @@ function escapeAdminHtml(string $value): string
 
 require_once dirname(__DIR__) . '/config/config.php';
 require_once dirname(__DIR__) . '/app/helpers/ui.php';
+require_once dirname(__DIR__) . '/app/helpers/admin_alerts.php';
+
+// Live alerts for the "Needs attention" panel (claims waiting, new reports, backup problems).
+$alerts = [];
+try {
+    $alerts = FiAdminAlerts::collect($pdo);
+} catch (Throwable $e) {
+    error_log('[FindIT] Dashboard alerts error: ' . $e->getMessage());
+}
 
 // Load the numbers shown on the dashboard cards.
 $stats = [
@@ -66,6 +75,25 @@ fiAdminNav('dashboard');
         <?php if ($statsError): ?>
             <?php fiAlert('warning', 'The statistics could not be loaded right now. You can still use the links below.'); ?>
         <?php endif; ?>
+
+        <section class="fi-attention" aria-labelledby="fi-attention-title">
+            <h2 class="fi-attention-title" id="fi-attention-title">Needs attention</h2>
+            <?php if ($alerts === []): ?>
+                <div class="fi-attention-clear" role="status">
+                    <?= fiIcon('shield-check', 28) ?>
+                    <div>
+                        <strong>All clear</strong>
+                        <span>No claims are waiting and nothing needs your attention right now.</span>
+                    </div>
+                </div>
+            <?php else: ?>
+                <ul class="fi-notif-list fi-notif-list--page">
+                    <?php foreach ($alerts as $alert): ?>
+                        <?= FiAdminAlerts::renderItem($alert, 'card') ?>
+                    <?php endforeach; ?>
+                </ul>
+            <?php endif; ?>
+        </section>
 
         <section class="fi-stat-grid" aria-label="Summary">
             <div class="fi-stat fi-stat--lime">

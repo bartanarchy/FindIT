@@ -21,7 +21,7 @@ final class FiNotify
     public const PAGE_SIZE = 10;
     public const DROPDOWN_SIZE = 6;
 
-    public const FILTERS = ['all', 'unread', 'claims', 'items'];
+    public const FILTERS = ['all', 'claims', 'items'];
 
     /** Known notification types: label, severity and icon. Text is always shown too. */
     private const TYPES = [
@@ -365,7 +365,7 @@ final class FiNotify
      *
      * $mode "menu" = compact (bell dropdown), "page" = full (notification page).
      */
-    public static function renderItem(array $n, string $mode = 'menu', string $csrf = '', string $returnQuery = ''): string
+    public static function renderItem(array $n, string $mode = 'menu'): string
     {
         $id = (int) $n['id'];
         $unread = !$n['is_read'];
@@ -389,24 +389,10 @@ final class FiNotify
         $html .= '</span>';
         $html .= '</a>';
 
-        if ($unread && $mode === 'menu') {
-            $html .= '<button type="button" class="fi-notif-read" data-notif-read="' . $id . '"'
-                . ' aria-label="Mark as read: ' . fiE($n['title']) . '" title="Mark as read">'
-                . fiIcon('check', 16) . '</button>';
-        }
-
-        if ($mode === 'page') {
+        // No manual "mark as read": opening the bell or the notification page marks everything as read.
+        if ($mode === 'page' && $n['link'] !== null) {
             $html .= '<div class="fi-notif-actions">';
-            $html .= '<a class="btn btn-outline-secondary btn-sm" href="' . fiE(self::openUrl($id)) . '">'
-                . ($n['link'] !== null ? 'Open' : 'Mark as read') . '</a>';
-            if ($unread && $n['link'] !== null) {
-                $html .= '<form method="post" action="notifications.php' . fiE($returnQuery) . '" class="d-inline">'
-                    . '<input type="hidden" name="csrf_token" value="' . fiE($csrf) . '">'
-                    . '<input type="hidden" name="action" value="mark_read">'
-                    . '<input type="hidden" name="id" value="' . $id . '">'
-                    . '<button type="submit" class="btn btn-link btn-sm fi-notif-textbtn">Mark as read</button>'
-                    . '</form>';
-            }
+            $html .= '<a class="btn btn-outline-secondary btn-sm" href="' . fiE(self::openUrl($id)) . '">Open</a>';
             $html .= '</div>';
         }
 

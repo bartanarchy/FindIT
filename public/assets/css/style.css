@@ -2665,3 +2665,151 @@ textarea.form-control {
         transition: none;
     }
 }
+
+/* --- Confirm dialog (replaces the browser's "localhost says" box) --- */
+.fi-modal--success {
+    --sev-bg: var(--fi-success-bg);
+    --sev-ink: var(--fi-success-ink);
+    --sev-line: #6F9A5B;
+}
+
+.fi-modal--warning {
+    --sev-bg: var(--fi-warning-bg);
+    --sev-ink: var(--fi-warning-ink);
+    --sev-line: #C9A23A;
+}
+
+.fi-modal--danger {
+    --sev-bg: var(--fi-danger-bg);
+    --sev-ink: var(--fi-danger-ink);
+    --sev-line: #B9473C;
+}
+
+.fi-modal--info {
+    --sev-bg: var(--fi-info-bg);
+    --sev-ink: var(--fi-info-ink);
+    --sev-line: #8B80C9;
+}
+
+body.fi-modal-open {
+    overflow: hidden;
+}
+
+.fi-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1090;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgb(59 67 51 / 48%);
+    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(3px);
+    animation: fi-fade-in 160ms ease-out;
+}
+
+.fi-modal-overlay.is-leaving {
+    opacity: 0;
+    transition: opacity 150ms ease;
+}
+
+.fi-modal {
+    width: min(440px, 100%);
+    padding: 30px 26px 22px;
+    text-align: center;
+    background: var(--fi-surface);
+    border: 1px solid var(--fi-border);
+    border-top: 4px solid var(--sev-line);
+    border-radius: var(--fi-radius-lg);
+    box-shadow: 0 24px 60px rgb(59 67 51 / 28%);
+    outline: none;
+    animation: fi-modal-pop 200ms ease-out;
+}
+
+.fi-modal-icon {
+    display: inline-flex;
+    width: 60px;
+    height: 60px;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+    color: var(--sev-ink);
+    background: var(--sev-bg);
+    border-radius: 50%;
+}
+
+.fi-modal-icon svg {
+    width: 28px;
+    height: 28px;
+}
+
+.fi-modal-title {
+    margin: 0 0 8px;
+    font-size: 1.25rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.fi-modal-text {
+    margin: 0 0 24px;
+    color: var(--fi-ink-soft);
+    font-size: 0.95rem;
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+}
+
+.fi-modal-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.fi-modal-actions .btn {
+    flex: 1 1 0;
+}
+
+.fi-btn-danger {
+    color: #fff;
+    background: #B9473C;
+    border: 1px solid #B9473C;
+    font-weight: 650;
+}
+
+.fi-btn-danger:hover,
+.fi-btn-danger:focus-visible {
+    color: #fff;
+    background: #9D3B31;
+    border-color: #9D3B31;
+}
+
+.fi-modal-actions .btn:focus-visible {
+    outline: 2px solid var(--fi-sage);
+    outline-offset: 2px;
+}
+
+@keyframes fi-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes fi-modal-pop {
+    from { opacity: 0; transform: translateY(10px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (max-width: 420px) {
+    .fi-modal-actions {
+        flex-direction: column-reverse;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fi-modal-overlay,
+    .fi-modal {
+        animation: none;
+    }
+
+    .fi-modal-overlay.is-leaving {
+        transition: none;
+    }
+}
