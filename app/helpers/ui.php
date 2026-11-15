@@ -83,6 +83,9 @@ function fiPublicNav(?array $user, string $active = ''): void
     echo '<nav class="navbar navbar-expand-md" aria-label="Main navigation">' . "\n";
     echo '<div class="fi-container">' . "\n";
     echo '<a class="fi-brand" href="index.php">FindIT<span>.</span></a>' . "\n";
+    if ($role === 'student') {
+        echo fiStudentBell($user, $active) . "\n";
+    }
     echo '<button class="navbar-toggler fi-toggler" type="button" data-bs-toggle="collapse" '
         . 'data-bs-target="#fiNav" aria-controls="fiNav" aria-expanded="false" '
         . 'aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>' . "\n";
@@ -92,37 +95,6 @@ function fiPublicNav(?array $user, string $active = ''): void
     if ($role === 'student') {
         echo $link('report-item.php', 'Report found item', 'report', $active) . "\n";
         echo $link('my-claims.php', 'My claims', 'claims', $active) . "\n";
-        // Step 1: Prepare a counter for notifications the student has not read yet.
-        $unreadCount = 0;
-        $studentId = (int) ($user['id'] ?? 0);
-        if ($studentId > 0) {
-            global $pdo;
-            try {
-                $countStmt = $pdo->prepare(
-                    'SELECT COUNT(*)
-                     FROM public.notification
-                     WHERE id_user = :user_id
-                       AND is_read = FALSE'
-                );
-                $countStmt->execute(['user_id' => $studentId]);
-                $unreadCount = (int) $countStmt->fetchColumn();
-            } catch (PDOException $e) {
-                // If the query fails, log the problem but still show the rest of the navbar.
-                error_log('[FindIT] Failed to count unread notifications: ' . $e->getMessage());
-            }
-        }
-        // Step 2: Add the unread number beside Notifications only when the count is above zero.
-        $notificationLabel = 'Notifications';
-        if ($unreadCount > 0) {
-            $notificationLabel .= ' <span class="fi-nav-count">'
-                . $unreadCount . '</span>';
-        }
-        // Step 3: Add the Notifications link and highlight it on the notifications page.
-        echo '<li class="nav-item"><a class="nav-link'
-            . ($active === 'notifications' ? ' active' : '')
-            . '" href="notifications.php"'
-            . ($active === 'notifications' ? ' aria-current="page"' : '')
-            . '>' . $notificationLabel . '</a></li>' . "\n";
         echo '<li class="nav-item d-none d-lg-block"><span class="fi-nav-user">'
             . fiE($user['name'] ?? 'Student') . '</span></li>' . "\n";
         echo '<li class="nav-item ms-md-2"><a class="btn btn-outline-secondary btn-sm" href="logout.php">Sign out</a></li>' . "\n";
@@ -152,6 +124,7 @@ function fiAdminNav(string $active = ''): void
     echo '<div class="fi-container">' . "\n";
     echo '<a class="fi-brand" href="index.php">FindIT<span>.</span>'
         . '<small class="fi-brand-tag">Admin</small></a>' . "\n";
+    echo fiAdminBell() . "\n";
     echo '<button class="navbar-toggler fi-toggler" type="button" data-bs-toggle="collapse" '
         . 'data-bs-target="#fiNav" aria-controls="fiNav" aria-expanded="false" '
         . 'aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>' . "\n";
@@ -198,10 +171,16 @@ function fiAlert(string $type, string $message, bool $autoHide = false): void
     $allowed = ['success', 'danger', 'warning', 'info'];
     $type = in_array($type, $allowed, true) ? $type : 'info';
     $role = $type === 'danger' ? 'alert' : 'status';
+    $icons = ['success' => 'check-circle', 'danger' => 'x-circle', 'warning' => 'alert-triangle', 'info' => 'info'];
+    $labels = ['success' => 'Done', 'danger' => 'Something went wrong', 'warning' => 'Heads up', 'info' => 'Note'];
     $hide = $autoHide ? ' data-autohide="6000"' : '';
-    echo '<div class="alert alert-' . $type . ' fi-alert" role="' . $role . '"' . $hide . '>'
-        . '<span class="fi-alert-dot" aria-hidden="true"></span>'
-        . '<div class="fi-alert-text">' . fiE($message) . '</div>'
+    echo '<div class="alert alert-' . $type . ' fi-alert fi-alert--rich" role="' . $role . '"' . $hide . '>'
+        . '<span class="fi-alert-icon" aria-hidden="true">' . fiIcon($icons[$type], 20) . '</span>'
+        . '<div class="fi-alert-text"><strong class="fi-alert-label">' . fiE($labels[$type]) . '</strong>'
+        . '<span class="fi-alert-message">' . fiE($message) . '</span></div>'
+        . '<button type="button" class="fi-alert-close" data-bs-dismiss="alert" aria-label="Dismiss message">'
+        . fiIcon('x', 16) . '</button>'
+        . ($autoHide ? '<span class="fi-alert-timer" aria-hidden="true"></span>' : '')
         . '</div>' . "\n";
 }
 function fiEmptyState(string $title, string $text, string $actionHtml = '', string $mark = '+'): void
@@ -262,4 +241,166 @@ function fiQrBlock(string $token, string $fileName, string $caption, string $not
         . 'Download QR Code</a>' . "\n";
     echo '</div>' . "\n";
     echo '</div>' . "\n";
+}
+
+/**
+ * Small inline SVG icons (stroke style, they take the text colour).
+ * Only names from this list are drawn; anything else falls back to "info".
+ */
+function fiIcon(string $name, int $size = 18): string
+{
+    $paths = [
+        'bell' => '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+        'check' => '<path d="M20 6 9 17l-5-5"/>',
+        'check-circle' => '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+        'x-circle' => '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
+        'x' => '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+        'clock' => '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+        'package' => '<path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>',
+        'alert-triangle' => '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+        'info' => '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+        'database' => '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/>',
+        'inbox' => '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+        'shield-check' => '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+    ];
+    $body = $paths[$name] ?? $paths['info'];
+    $size = max(12, min(48, $size));
+
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="' . $size . '" height="' . $size
+        . '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" '
+        . 'stroke-linecap="round" stroke-linejoin="round" focusable="false">' . $body . '</svg>';
+}
+
+/**
+ * The bell + dropdown shared by students (their notifications) and admins (live alerts).
+ * Options: mode, endpoint, csrf, count, severity, itemsHtml, extra (data attributes),
+ * title, footerHref, footerLabel, emptyTitle, emptyText, active, markAll.
+ */
+function fiBellMarkup(array $o): string
+{
+    $count = (int) $o['count'];
+    $badge = $count > 99 ? '99+' : (string) $count;
+    $noun = $o['mode'] === 'admin' ? 'alerts' : 'unread notifications';
+    $label = $o['title'] . ($count > 0 ? ', ' . $count . ' ' . $noun : ', nothing new');
+    $hasItems = $o['itemsHtml'] !== '';
+
+    $html = '<div class="fi-bell dropdown' . (!empty($o['active']) ? ' is-current' : '') . '" data-fi-bell'
+        . ' data-mode="' . fiE($o['mode']) . '" data-endpoint="' . fiE($o['endpoint']) . '"'
+        . ' data-csrf="' . fiE($o['csrf']) . '" data-poll="45" data-title="' . fiE($o['title']) . '"'
+        . $o['extra'] . '>';
+
+    $html .= '<a href="' . fiE($o['footerHref']) . '" class="fi-bell-btn" id="fiBellBtn-' . fiE($o['mode']) . '"'
+        . ' role="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false"'
+        . ' aria-haspopup="true" aria-label="' . fiE($label) . '" data-bell-button>'
+        . fiIcon('bell', 22)
+        . '<span class="fi-bell-badge fi-bell-badge--' . fiE($o['severity']) . '" data-bell-badge'
+        . ($count > 0 ? '' : ' hidden') . '>' . fiE($badge) . '</span></a>';
+
+    $html .= '<div class="dropdown-menu dropdown-menu-end fi-bell-menu" aria-labelledby="fiBellBtn-' . fiE($o['mode']) . '">';
+    $html .= '<div class="fi-bell-head"><h2 class="fi-bell-title">' . fiE($o['title']) . '</h2>';
+    if (!empty($o['markAll'])) {
+        $html .= '<button type="button" class="fi-bell-markall" data-bell-markall' . ($count > 0 ? '' : ' hidden')
+            . '>Mark all as read</button>';
+    }
+    $html .= '</div>';
+
+    $html .= '<ul class="fi-notif-list" data-bell-list' . ($hasItems ? '' : ' hidden') . '>' . $o['itemsHtml'] . '</ul>';
+    $html .= '<div class="fi-bell-empty" data-bell-empty' . ($hasItems ? ' hidden' : '') . '>'
+        . '<span class="fi-bell-empty-icon" aria-hidden="true">' . fiIcon($o['emptyIcon'], 24) . '</span>'
+        . '<strong>' . fiE($o['emptyTitle']) . '</strong><span>' . fiE($o['emptyText']) . '</span></div>';
+    $html .= '<div class="fi-bell-foot"><a href="' . fiE($o['footerHref']) . '">' . fiE($o['footerLabel']) . '</a></div>';
+    $html .= '</div>';
+    $html .= '<span class="visually-hidden" role="status" aria-live="polite" data-bell-live></span>';
+
+    return $html . '</div>';
+}
+
+/** Bell for a signed-in student. If anything fails the navbar still renders (with no badge). */
+function fiStudentBell(?array $user, string $active = ''): string
+{
+    global $pdo;
+
+    $studentId = (int) ($user['id'] ?? 0);
+    $unread = 0;
+    $latest = 0;
+    $itemsHtml = '';
+
+    if ($studentId > 0 && isset($pdo)) {
+        try {
+            require_once __DIR__ . '/notifications.php';
+            require_once __DIR__ . '/csrf.php';
+            $unread = FiNotify::unreadCount($pdo, $studentId);
+            $latest = FiNotify::latestId($pdo, $studentId);
+            foreach (FiNotify::recent($pdo, $studentId) as $n) {
+                $itemsHtml .= FiNotify::renderItem($n, 'menu');
+            }
+        } catch (Throwable $e) {
+            error_log('[FindIT] Failed to load the notification bell: ' . $e->getMessage());
+        }
+    }
+
+    require_once __DIR__ . '/csrf.php';
+
+    return fiBellMarkup([
+        'mode' => 'student',
+        'endpoint' => 'notifications-api.php',
+        'csrf' => generateCsrfToken(),
+        'count' => $unread,
+        'severity' => 'danger',
+        'itemsHtml' => $itemsHtml,
+        'extra' => ' data-latest-id="' . $latest . '"',
+        'title' => 'Notifications',
+        'footerHref' => 'notifications.php',
+        'footerLabel' => 'View all notifications',
+        'emptyIcon' => 'inbox',
+        'emptyTitle' => 'You are all caught up',
+        'emptyText' => 'Decisions about your claims will show up here.',
+        'active' => $active === 'notifications',
+        'markAll' => true,
+    ]);
+}
+
+/** Bell for admins: live alerts (claims waiting, new reports, backup problems). */
+function fiAdminBell(): string
+{
+    global $pdo;
+
+    $alerts = [];
+
+    if (isset($pdo)) {
+        try {
+            require_once __DIR__ . '/admin_alerts.php';
+            $alerts = FiAdminAlerts::collect($pdo);
+        } catch (Throwable $e) {
+            error_log('[FindIT] Failed to load admin alerts: ' . $e->getMessage());
+        }
+    }
+
+    require_once __DIR__ . '/admin_alerts.php';
+    $summary = FiAdminAlerts::summary($alerts);
+
+    $itemsHtml = '';
+    $counts = [];
+    foreach ($alerts as $a) {
+        $itemsHtml .= FiAdminAlerts::renderItem($a, 'menu');
+        $counts[$a['key']] = (int) $a['count'];
+    }
+
+    return fiBellMarkup([
+        'mode' => 'admin',
+        'endpoint' => 'alerts-api.php',
+        'csrf' => '',
+        'count' => $summary['count'],
+        'severity' => $summary['severity'] === 'danger' ? 'danger' : 'warning',
+        'itemsHtml' => $itemsHtml,
+        'extra' => ' data-counts="' . fiE(json_encode($counts, JSON_FORCE_OBJECT)) . '"',
+        'title' => 'Alerts',
+        'footerHref' => 'index.php',
+        'footerLabel' => 'Open dashboard',
+        'emptyIcon' => 'shield-check',
+        'emptyTitle' => 'All clear',
+        'emptyText' => 'Nothing needs your attention right now.',
+        'active' => false,
+        'markAll' => false,
+    ]);
 }
