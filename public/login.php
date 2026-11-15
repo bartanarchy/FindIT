@@ -83,7 +83,10 @@ fiPublicNav(null, 'login');
             </div>
 
             <div class="mb-4">
-                <label for="password" class="form-label">Password</label>
+                <div class="d-flex justify-content-between align-items-center">
+                    <label for="password" class="form-label mb-1">Password</label>
+                    <a href="forgot-password.php" class="small">Forgot password?</a>
+                </div>
                 <div class="input-group has-validation">
                     <input
                         type="password"
