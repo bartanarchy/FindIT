@@ -1903,3 +1903,765 @@ textarea.form-control {
     background: #B9473C;           
     border-radius: 999px;          
 }
+/* ==========================================================================
+   19. Notifications, alerts and toasts
+   Uses the existing FindIT tokens (cream paper, olive green, status colours).
+   Severity is always shown with an icon AND a text label, never colour alone.
+   ========================================================================== */
+
+/* Severity colours, shared by the list, the toasts and the alerts */
+.fi-notif--success,
+.fi-toast--success {
+    --sev-bg: var(--fi-success-bg);
+    --sev-ink: var(--fi-success-ink);
+    --sev-line: #6F9A5B;
+}
+
+.fi-notif--warning,
+.fi-toast--warning {
+    --sev-bg: var(--fi-warning-bg);
+    --sev-ink: var(--fi-warning-ink);
+    --sev-line: #C9A23A;
+}
+
+.fi-notif--danger,
+.fi-toast--danger {
+    --sev-bg: var(--fi-danger-bg);
+    --sev-ink: var(--fi-danger-ink);
+    --sev-line: #B9473C;
+}
+
+.fi-notif--info,
+.fi-toast--info {
+    --sev-bg: var(--fi-info-bg);
+    --sev-ink: var(--fi-info-ink);
+    --sev-line: #8B80C9;
+}
+
+/* --- Bell in the navigation bar --- */
+.fi-bell {
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+    margin-right: 6px;
+}
+
+.fi-bell [hidden] {
+    display: none !important;
+}
+
+.fi-bell-btn {
+    position: relative;
+    display: inline-flex;
+    width: 42px;
+    height: 42px;
+    align-items: center;
+    justify-content: center;
+    color: var(--fi-ink-soft);
+    border-radius: var(--fi-radius-sm);
+    text-decoration: none;
+    transition: background var(--fi-transition), color var(--fi-transition);
+}
+
+.fi-bell-btn:hover,
+.fi-bell.show .fi-bell-btn,
+.fi-bell.is-current .fi-bell-btn {
+    color: var(--fi-sage-dark);
+    background: var(--fi-lime-soft);
+}
+
+.fi-bell-btn:focus-visible {
+    outline: 2px solid var(--fi-sage);
+    outline-offset: 2px;
+}
+
+.fi-bell-badge {
+    position: absolute;
+    top: 3px;
+    right: 1px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+    background: #B9473C;
+    border-radius: 999px;
+    box-shadow: 0 0 0 2px var(--fi-paper);
+}
+
+.fi-bell-badge--warning {
+    background: #8A6D1C;
+}
+
+/* The bell swings once when a new notification arrives while the page is open. */
+.fi-bell.is-ping .fi-bell-btn svg {
+    transform-origin: 50% 15%;
+    animation: fi-bell-ring 900ms ease-in-out 1;
+}
+
+@keyframes fi-bell-ring {
+    0%, 100% { transform: rotate(0); }
+    15% { transform: rotate(14deg); }
+    35% { transform: rotate(-12deg); }
+    55% { transform: rotate(8deg); }
+    75% { transform: rotate(-5deg); }
+}
+
+@media (min-width: 768px) {
+    /* On desktop the bell sits at the far right, after the links. */
+    .fi-bell {
+        order: 3;
+        margin-left: 6px;
+        margin-right: 0;
+    }
+}
+
+/* --- Dropdown --- */
+.fi-bell-menu {
+    width: min(400px, calc(100vw - 24px));
+    margin-top: 10px;
+    padding: 0;
+    overflow: hidden;
+    background: var(--fi-surface);
+    border: 1px solid var(--fi-border);
+    border-radius: var(--fi-radius-md);
+    box-shadow: var(--fi-shadow-md);
+}
+
+@media (max-width: 575.98px) {
+    /* On phones the panel spans the screen under the navigation bar. */
+    .fi-bell {
+        position: static;
+    }
+
+    .fi-bell-menu {
+        left: 12px !important;
+        right: 12px !important;
+        width: auto;
+        margin-top: 6px;
+    }
+}
+
+.fi-bell-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid var(--fi-border);
+}
+
+.fi-bell-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 750;
+}
+
+.fi-bell-markall {
+    padding: 4px 8px;
+    color: var(--fi-sage-text);
+    font-size: 0.82rem;
+    font-weight: 650;
+    background: none;
+    border: 0;
+    border-radius: 8px;
+}
+
+.fi-bell-markall:hover {
+    background: var(--fi-lime-soft);
+}
+
+.fi-bell-markall:focus-visible,
+.fi-notif-read:focus-visible,
+.fi-bell-foot a:focus-visible,
+.fi-notif-link:focus-visible,
+.fi-toast-close:focus-visible,
+.fi-alert-close:focus-visible,
+.fi-notif-tab:focus-visible,
+.fi-pager-link:focus-visible {
+    outline: 2px solid var(--fi-sage);
+    outline-offset: 2px;
+}
+
+.fi-bell-menu .fi-notif-list {
+    max-height: min(420px, 60vh);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.fi-bell-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 30px 20px 26px;
+    color: var(--fi-muted);
+    font-size: 0.88rem;
+    text-align: center;
+}
+
+.fi-bell-empty strong {
+    color: var(--fi-ink);
+    font-size: 0.95rem;
+}
+
+.fi-bell-empty-icon {
+    display: inline-flex;
+    width: 48px;
+    height: 48px;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 6px;
+    color: var(--fi-sage-text);
+    background: var(--fi-lime);
+    border-radius: 50%;
+}
+
+.fi-bell-foot {
+    border-top: 1px solid var(--fi-border);
+}
+
+.fi-bell-foot a {
+    display: block;
+    padding: 12px 16px;
+    color: var(--fi-sage-text);
+    font-size: 0.88rem;
+    font-weight: 700;
+    text-align: center;
+    text-decoration: none;
+}
+
+.fi-bell-foot a:hover {
+    background: var(--fi-lime-soft);
+}
+
+/* --- One notification (dropdown, page and admin alerts) --- */
+.fi-notif-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.fi-notif {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background: var(--fi-surface);
+    border-bottom: 1px solid var(--fi-border);
+}
+
+.fi-notif:last-child {
+    border-bottom: 0;
+}
+
+.fi-notif.is-unread {
+    background: var(--fi-lime-soft);
+    box-shadow: inset 3px 0 0 var(--sev-line);
+}
+
+.fi-notif-link {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 13px 16px;
+    color: inherit;
+    text-decoration: none;
+}
+
+.fi-notif-link:hover .fi-notif-title {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.fi-bell-menu .fi-notif.is-unread:not(.is-alert) .fi-notif-link {
+    padding-right: 50px;
+}
+
+.fi-notif-icon {
+    display: inline-flex;
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    align-items: center;
+    justify-content: center;
+    color: var(--sev-ink);
+    background: var(--sev-bg);
+    border-radius: 50%;
+}
+
+.fi-notif-body {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.fi-notif-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2px 10px;
+    font-size: 0.76rem;
+}
+
+.fi-notif-type {
+    color: var(--sev-ink);
+    font-weight: 700;
+}
+
+.fi-notif-time {
+    color: var(--fi-muted);
+}
+
+.fi-notif-title {
+    color: var(--fi-ink);
+    font-size: 0.93rem;
+    font-weight: 650;
+    line-height: 1.35;
+}
+
+.fi-notif.is-unread .fi-notif-title {
+    font-weight: 800;
+}
+
+.fi-notif-msg {
+    color: var(--fi-ink-soft);
+    font-size: 0.85rem;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.fi-bell-menu .fi-notif-msg {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+}
+
+/* Small round "mark as read" button in the dropdown */
+.fi-notif-read {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: inline-flex;
+    width: 30px;
+    height: 30px;
+    align-items: center;
+    justify-content: center;
+    color: var(--fi-sage-text);
+    background: var(--fi-surface);
+    border: 1px solid var(--fi-border-strong);
+    border-radius: 50%;
+    transition: background var(--fi-transition), color var(--fi-transition);
+}
+
+.fi-notif-read:hover {
+    color: #fff;
+    background: var(--fi-sage);
+    border-color: var(--fi-sage);
+}
+
+/* --- Notification page --- */
+.fi-notif-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.fi-notif-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 4px;
+    background: var(--fi-paper-2);
+    border-radius: 999px;
+}
+
+.fi-notif-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    color: var(--fi-ink-soft);
+    font-size: 0.88rem;
+    font-weight: 650;
+    border-radius: 999px;
+    text-decoration: none;
+}
+
+.fi-notif-tab:hover {
+    color: var(--fi-sage-dark);
+}
+
+.fi-notif-tab.is-active {
+    color: var(--fi-sage-dark);
+    background: var(--fi-surface);
+    box-shadow: var(--fi-shadow-sm);
+}
+
+.fi-notif-tab-count {
+    min-width: 22px;
+    padding: 1px 7px;
+    color: var(--fi-neutral-ink);
+    font-size: 0.74rem;
+    font-weight: 700;
+    text-align: center;
+    background: var(--fi-neutral-bg);
+    border-radius: 999px;
+}
+
+.fi-notif-tab.is-active .fi-notif-tab-count {
+    background: var(--fi-lime);
+}
+
+.fi-notif-list--page {
+    display: grid;
+    gap: 12px;
+}
+
+.fi-notif--page {
+    overflow: hidden;
+    border: 1px solid var(--fi-border);
+    border-radius: var(--fi-radius-md);
+    box-shadow: var(--fi-shadow-sm);
+}
+
+.fi-notif--page:last-child {
+    border-bottom: 1px solid var(--fi-border);
+}
+
+.fi-notif--page .fi-notif-link {
+    padding: 16px 18px 10px;
+}
+
+.fi-notif--page .fi-notif-title {
+    font-size: 1rem;
+}
+
+.fi-notif--page .fi-notif-msg {
+    font-size: 0.9rem;
+}
+
+.fi-notif-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 0 18px 16px 68px;
+}
+
+.fi-notif-textbtn {
+    padding: 4px 6px;
+    color: var(--fi-sage-text);
+    font-weight: 650;
+    text-decoration: none;
+}
+
+.fi-notif-textbtn:hover {
+    text-decoration: underline;
+}
+
+.fi-pager {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 22px;
+}
+
+.fi-pager-link {
+    min-width: 40px;
+    padding: 8px 14px;
+    color: var(--fi-ink-soft);
+    font-size: 0.88rem;
+    font-weight: 650;
+    text-align: center;
+    background: var(--fi-surface);
+    border: 1px solid var(--fi-border);
+    border-radius: var(--fi-radius-sm);
+    text-decoration: none;
+}
+
+.fi-pager-link:hover {
+    color: var(--fi-sage-dark);
+    background: var(--fi-lime-soft);
+}
+
+.fi-pager-link.is-active {
+    color: #fff;
+    background: var(--fi-sage);
+    border-color: var(--fi-sage);
+}
+
+@media (max-width: 575.98px) {
+    .fi-notif-actions {
+        padding-left: 18px;
+    }
+
+    .fi-notif-tabs {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .fi-notif-tab {
+        padding-inline: 10px;
+    }
+}
+
+/* --- Admin dashboard: needs attention --- */
+.fi-attention {
+    margin-bottom: 28px;
+}
+
+.fi-attention-title {
+    margin: 0 0 12px;
+    font-size: 1.1rem;
+    font-weight: 750;
+}
+
+.fi-attention-clear {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 18px;
+    color: var(--fi-success-ink);
+    background: var(--fi-success-bg);
+    border-radius: var(--fi-radius-md);
+}
+
+.fi-attention-clear strong {
+    display: block;
+}
+
+.fi-attention-clear span {
+    font-size: 0.88rem;
+}
+
+/* --- Toast (pop-up message in the corner) --- */
+.fi-toast-stack {
+    position: fixed;
+    top: 76px;
+    right: 16px;
+    z-index: 1080;
+    display: flex;
+    width: min(380px, calc(100vw - 32px));
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.fi-toast {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 42px 16px 14px;
+    overflow: hidden;
+    pointer-events: auto;
+    background: var(--fi-surface);
+    border: 1px solid var(--fi-border);
+    border-left: 4px solid var(--sev-line);
+    border-radius: var(--fi-radius-md);
+    box-shadow: var(--fi-shadow-md);
+    animation: fi-toast-in 240ms ease-out;
+}
+
+.fi-toast.is-leaving {
+    opacity: 0;
+    transform: translateX(14px);
+    transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.fi-toast-icon {
+    display: inline-flex;
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+    align-items: center;
+    justify-content: center;
+    color: var(--sev-ink);
+    background: var(--sev-bg);
+    border-radius: 50%;
+}
+
+.fi-toast-body {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.fi-toast-title {
+    font-size: 0.92rem;
+    font-weight: 750;
+}
+
+.fi-toast-msg {
+    display: -webkit-box;
+    overflow: hidden;
+    color: var(--fi-ink-soft);
+    font-size: 0.85rem;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+}
+
+.fi-toast-action {
+    margin-top: 4px;
+    color: var(--fi-sage-text);
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.fi-toast-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: inline-flex;
+    width: 28px;
+    height: 28px;
+    align-items: center;
+    justify-content: center;
+    color: var(--fi-muted);
+    background: transparent;
+    border: 0;
+    border-radius: 50%;
+}
+
+.fi-toast-close:hover {
+    color: var(--fi-ink);
+    background: var(--fi-paper-2);
+}
+
+.fi-toast-timer {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: var(--sev-line);
+    opacity: 0.55;
+    transform-origin: left;
+    animation: fi-timer linear forwards;
+}
+
+.fi-toast:hover .fi-toast-timer,
+.fi-toast:focus-within .fi-toast-timer {
+    animation-play-state: paused;
+}
+
+@keyframes fi-toast-in {
+    from { opacity: 0; transform: translateX(18px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes fi-timer {
+    from { transform: scaleX(1); }
+    to { transform: scaleX(0); }
+}
+
+@media (max-width: 575.98px) {
+    .fi-toast-stack {
+        top: auto;
+        right: 16px;
+        bottom: 16px;
+        left: 16px;
+        width: auto;
+    }
+}
+
+/* --- Page messages (success, error, warning, info) --- */
+.fi-alert--rich {
+    position: relative;
+    align-items: flex-start;
+    padding: 14px 46px 15px 14px;
+    overflow: hidden;
+    border-left-width: 4px;
+    border-radius: var(--fi-radius-md);
+}
+
+.alert-success.fi-alert--rich { border-left-color: #6F9A5B; }
+.alert-danger.fi-alert--rich { border-left-color: #B9473C; }
+.alert-warning.fi-alert--rich { border-left-color: #C9A23A; }
+.alert-info.fi-alert--rich { border-left-color: #8B80C9; }
+
+.fi-alert-icon {
+    display: inline-flex;
+    flex: 0 0 auto;
+    margin-top: 1px;
+}
+
+.fi-alert-label,
+.fi-alert-message {
+    display: block;
+}
+
+.fi-alert-label {
+    font-size: 0.92rem;
+}
+
+.fi-alert-message {
+    font-size: 0.9rem;
+}
+
+.fi-alert-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: inline-flex;
+    width: 28px;
+    height: 28px;
+    align-items: center;
+    justify-content: center;
+    color: inherit;
+    background: transparent;
+    border: 0;
+    border-radius: 50%;
+    opacity: 0.7;
+}
+
+.fi-alert-close:hover {
+    background: rgb(59 67 51 / 8%);
+    opacity: 1;
+}
+
+.fi-alert-timer {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: currentcolor;
+    opacity: 0.3;
+    transform-origin: left;
+    animation: fi-timer 6s linear forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fi-bell.is-ping .fi-bell-btn svg,
+    .fi-toast {
+        animation: none;
+    }
+
+    .fi-toast-timer,
+    .fi-alert-timer {
+        display: none;
+    }
+
+    .fi-toast.is-leaving {
+        transition: none;
+    }
+}
