@@ -30,10 +30,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
     $errorMessage = 'Your session has expired. Please refresh the page and try again.';
 
-    // The reCAPTCHA token is sent by the user's browser when they submit the form.
-    // Google sends a token to the user's browser, which is then sent back to us when the form is submitted.
-    } elseif (!verifyRecaptcha($_POST['g-recaptcha-response'] ?? '')) {
-    $errorMessage = 'Please confirm that you are not a robot.';
+    } elseif (!verifyCaptcha($_POST['captcha'] ?? '')) {
+    $errorMessage = 'The captcha code is incorrect. Please try again.';
     
     } else {
         // The controller handles validation, password hashing, and database insertion.
@@ -202,12 +200,38 @@ fiPublicNav(null, 'register');
                 </div>
             </div>
 
-            <?php  ?>
-            <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+                <?php // Captcha: draw code, refresh button, and answer column?>
+            <div class="mt-3">
+                <label for="captcha" class="form-label">Verify that you are not a bot</label>
 
-            <?php  ?>
-            <div style="display: flex; justify-content: center; margin-top: 1rem;">
-                <div class="g-recaptcha" data-sitekey="<?= fiE(RECAPTCHA_SITE_KEY) ?>"></div>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <?php // browser ask iage to captcha.php ?>
+                    <img
+                        id="captcha-image"
+                        src="captcha.php"
+                        alt="Captcha code"
+                        width="200"
+                        height="60"
+                        style="border: 1px solid #ddd; border-radius: 8px;">
+
+                    <?php ?>
+                    <button
+                        type="button"
+                        class="btn btn-outline-secondary btn-sm"
+                        onclick="document.getElementById('captcha-image').src = 'captcha.php?t=' + Date.now();">
+                        Refresh
+                    </button>
+                </div>
+
+                <input
+                    type="text"
+                    class="form-control"
+                    id="captcha"
+                    name="captcha"
+                    maxlength="5"
+                    autocomplete="off"
+                    placeholder="Type the characters above"
+                    required>
             </div>
             <button
                 type="submit"
