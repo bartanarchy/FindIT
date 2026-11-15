@@ -29,11 +29,6 @@ $dbName = $env['DB_NAME'] ?? 'FindIT';
 $dbUser = $env['DB_USER'] ?? 'postgres';
 $dbPass = $env['DB_PASS'] ?? '1';
 
-// reCAPTCHA key is taken from .env file.
-// if the keys are not set, they will default to empty strings.
-define('RECAPTCHA_SITE_KEY', $env['RECAPTCHA_SITE_KEY'] ?? '');
-define('RECAPTCHA_SECRET_KEY', $env['RECAPTCHA_SECRET_KEY'] ?? '');
-
 // Security keys also come from .env (never from the database).
 // APP_ENC_KEY encrypts the sensitive database columns. Keep a copy of it
 // somewhere safe and OFFLINE: without it, encrypted data cannot be recovered.
