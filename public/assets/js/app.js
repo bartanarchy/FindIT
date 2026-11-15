@@ -228,3 +228,397 @@
         initHomeFilter();
     });
 })();
+
+/* ==========================================================================
+   Notifications: bell dropdown, live count (polling) and toast messages.
+   The site works without this file; it only adds live updates and no-reload actions.
+   All text from the server is inserted with textContent. The only HTML inserted is
+   markup that PHP already escaped (the notification list) and trusted SVG icons.
+   ========================================================================== */
+(function () {
+    'use strict';
+
+    var ICONS = {
+        success: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>',
+        danger: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>',
+        warning: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
+        info: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>',
+        close: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>'
+    };
+
+    /* ---------------------------------------------------------------- toast */
+    var MAX_TOASTS = 3;
+    var stack = null;
+
+    function ensureStack() {
+        if (stack && document.body.contains(stack)) {
+            return stack;
+        }
+        stack = document.createElement('div');
+        stack.className = 'fi-toast-stack';
+        stack.setAttribute('aria-live', 'polite');
+        stack.setAttribute('aria-relevant', 'additions');
+        document.body.appendChild(stack);
+        return stack;
+    }
+
+    /**
+     * Show a pop-up message in the corner.
+     * options: type (success|danger|warning|info), title, message, url, actionLabel,
+     *          iconHtml (trusted SVG), duration (ms)
+     */
+    function toast(options) {
+        var type = ['success', 'danger', 'warning', 'info'].indexOf(options.type) !== -1 ? options.type : 'info';
+        var duration = options.duration || (type === 'danger' ? 9000 : 6500);
+        var host = ensureStack();
+
+        while (host.children.length >= MAX_TOASTS) {
+            host.removeChild(host.firstChild);
+        }
+
+        var el = document.createElement('div');
+        el.className = 'fi-toast fi-toast--' + type;
+        el.setAttribute('role', type === 'danger' ? 'alert' : 'status');
+
+        var icon = document.createElement('span');
+        icon.className = 'fi-toast-icon';
+        icon.setAttribute('aria-hidden', 'true');
+        icon.innerHTML = options.iconHtml || ICONS[type];
+
+        var body = document.createElement('div');
+        body.className = 'fi-toast-body';
+
+        var title = document.createElement('strong');
+        title.className = 'fi-toast-title';
+        title.textContent = options.title || '';
+        body.appendChild(title);
+
+        if (options.message) {
+            var msg = document.createElement('span');
+            msg.className = 'fi-toast-msg';
+            msg.textContent = options.message;
+            body.appendChild(msg);
+        }
+
+        if (options.url) {
+            var action = document.createElement('a');
+            action.className = 'fi-toast-action';
+            action.href = options.url;
+            action.textContent = options.actionLabel || 'View';
+            body.appendChild(action);
+        }
+
+        var close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'fi-toast-close';
+        close.setAttribute('aria-label', 'Dismiss message');
+        close.innerHTML = ICONS.close;
+
+        var timerBar = document.createElement('span');
+        timerBar.className = 'fi-toast-timer';
+        timerBar.setAttribute('aria-hidden', 'true');
+        timerBar.style.animationDuration = duration + 'ms';
+
+        el.appendChild(icon);
+        el.appendChild(body);
+        el.appendChild(close);
+        el.appendChild(timerBar);
+        host.appendChild(el);
+
+        var remaining = duration;
+        var startedAt = Date.now();
+        var timer = null;
+
+        function dismiss() {
+            window.clearTimeout(timer);
+            if (!el.parentNode) {
+                return;
+            }
+            el.classList.add('is-leaving');
+            window.setTimeout(function () {
+                if (el.parentNode) {
+                    el.parentNode.removeChild(el);
+                }
+            }, 230);
+        }
+
+        function run() {
+            startedAt = Date.now();
+            timer = window.setTimeout(dismiss, remaining);
+        }
+
+        // Hovering or focusing the message pauses it, so it can be read and clicked.
+        function pause() {
+            window.clearTimeout(timer);
+            remaining = Math.max(1500, remaining - (Date.now() - startedAt));
+        }
+
+        el.addEventListener('mouseenter', pause);
+        el.addEventListener('focusin', pause);
+        el.addEventListener('mouseleave', run);
+        el.addEventListener('focusout', run);
+        close.addEventListener('click', dismiss);
+        run();
+
+        return el;
+    }
+
+    window.FindIT = window.FindIT || {};
+    window.FindIT.toast = toast;
+
+    /* ----------------------------------------------------------------- bell */
+    function initBell(root) {
+        var mode = root.getAttribute('data-mode') || 'student';
+        var endpoint = root.getAttribute('data-endpoint');
+        var csrf = root.getAttribute('data-csrf') || '';
+        var pollSeconds = parseInt(root.getAttribute('data-poll'), 10) || 45;
+        var heading = root.getAttribute('data-title') || 'Notifications';
+
+        var button = root.querySelector('[data-bell-button]');
+        var badge = root.querySelector('[data-bell-badge]');
+        var list = root.querySelector('[data-bell-list]');
+        var empty = root.querySelector('[data-bell-empty]');
+        var markAll = root.querySelector('[data-bell-markall]');
+        var live = root.querySelector('[data-bell-live]');
+
+        if (!endpoint || !button || !badge || !list || !empty) {
+            return;
+        }
+
+        var baseTitle = document.title;
+        var latestId = parseInt(root.getAttribute('data-latest-id'), 10) || 0;
+        var counts = {};
+        try {
+            counts = JSON.parse(root.getAttribute('data-counts') || '{}') || {};
+        } catch (error) {
+            counts = {};
+        }
+        var unread = badge.hidden ? 0 : (parseInt(badge.textContent, 10) || 0);
+        var noun = mode === 'admin' ? 'alerts' : 'unread notifications';
+
+        function applyCount(n) {
+            unread = Math.max(0, parseInt(n, 10) || 0);
+            badge.hidden = unread === 0;
+            badge.textContent = unread > 99 ? '99+' : String(unread);
+            button.setAttribute('aria-label', heading + (unread > 0 ? ', ' + unread + ' ' + noun : ', nothing new'));
+            if (markAll) {
+                markAll.hidden = unread === 0;
+            }
+            if (mode === 'student') {
+                document.title = unread > 0 ? '(' + unread + ') ' + baseTitle : baseTitle;
+            }
+        }
+
+        function applyList(html) {
+            list.innerHTML = html || '';
+            var has = list.children.length > 0;
+            list.hidden = !has;
+            empty.hidden = has;
+        }
+
+        function ring() {
+            root.classList.remove('is-ping');
+            // Reading offsetWidth restarts the CSS animation.
+            void root.offsetWidth;
+            root.classList.add('is-ping');
+        }
+
+        function request(method, url, data) {
+            var options = {
+                method: method,
+                credentials: 'same-origin',
+                headers: { 'Accept': 'application/json', 'X-CSRF-Token': csrf }
+            };
+            if (data) {
+                options.body = new URLSearchParams(data);
+            }
+            return window.fetch(url, options).then(function (response) {
+                return response.json().catch(function () { return {}; }).then(function (json) {
+                    return { status: response.status, data: json };
+                });
+            });
+        }
+
+        function failed() {
+            toast({
+                type: 'danger',
+                title: 'Could not update notifications',
+                message: 'Check your connection and try again.'
+            });
+        }
+
+        /* Mark one as read, without leaving the page. */
+        list.addEventListener('click', function (event) {
+            var target = event.target.closest ? event.target.closest('[data-notif-read]') : null;
+            if (!target) {
+                return;
+            }
+            event.preventDefault();
+            var row = target.closest('.fi-notif');
+
+            target.disabled = true;
+            request('POST', endpoint, { action: 'mark_read', id: target.getAttribute('data-notif-read') })
+                .then(function (res) {
+                    if (res.status !== 200 || !res.data.ok) {
+                        target.disabled = false;
+                        failed();
+                        return;
+                    }
+                    if (row) {
+                        row.classList.remove('is-unread');
+                    }
+                    target.remove();
+                    applyCount(res.data.unread);
+                    if (live) {
+                        live.textContent = 'Notification marked as read.';
+                    }
+                })
+                .catch(function () {
+                    target.disabled = false;
+                    failed();
+                });
+        });
+
+        /* Mark all as read. */
+        if (markAll) {
+            markAll.addEventListener('click', function () {
+                markAll.disabled = true;
+                request('POST', endpoint, { action: 'mark_all' })
+                    .then(function (res) {
+                        markAll.disabled = false;
+                        if (res.status !== 200 || !res.data.ok) {
+                            failed();
+                            return;
+                        }
+                        list.querySelectorAll('.fi-notif.is-unread').forEach(function (row) {
+                            row.classList.remove('is-unread');
+                        });
+                        list.querySelectorAll('[data-notif-read]').forEach(function (b) { b.remove(); });
+                        applyCount(res.data.unread);
+                        toast({ type: 'success', title: 'All caught up', message: 'Every notification is marked as read.', duration: 4000 });
+                    })
+                    .catch(function () {
+                        markAll.disabled = false;
+                        failed();
+                    });
+            });
+        }
+
+        /* New items found by polling: show up to two toasts, or one summary. */
+        function announce(items) {
+            if (!items.length) {
+                return;
+            }
+            ring();
+            if (items.length > 2) {
+                toast({
+                    type: 'info',
+                    title: items.length + ' new ' + (mode === 'admin' ? 'alerts' : 'notifications'),
+                    message: 'Open the bell to see them.'
+                });
+                return;
+            }
+            items.forEach(function (item) {
+                toast({
+                    type: item.severity,
+                    title: item.title,
+                    message: item.message,
+                    url: item.url,
+                    actionLabel: mode === 'admin' ? 'Open' : 'View',
+                    iconHtml: item.icon
+                });
+            });
+        }
+
+        function handle(data) {
+            applyCount(data.unread);
+            applyList(data.html);
+
+            var toasts = data.toasts || [];
+
+            if (mode === 'admin') {
+                badge.className = 'fi-bell-badge fi-bell-badge--' + (data.severity === 'danger' ? 'danger' : 'warning');
+                var fresh = [];
+                var next = {};
+                toasts.forEach(function (item) {
+                    next[item.key] = item.count;
+                    // Only tell the admin about something new or something that grew.
+                    if (counts[item.key] === undefined || item.count > counts[item.key]) {
+                        fresh.push(item);
+                    }
+                });
+                counts = next;
+                announce(fresh);
+                return;
+            }
+
+            if (typeof data.latest_id === 'number') {
+                latestId = Math.max(latestId, data.latest_id);
+            }
+            announce(toasts);
+        }
+
+        /* Polling: light, pauses in a hidden tab, backs off on errors, stops when signed out. */
+        var timer = null;
+        var failures = 0;
+        var stopped = false;
+        var lastRun = Date.now();
+
+        function schedule(ms) {
+            window.clearTimeout(timer);
+            if (!stopped) {
+                timer = window.setTimeout(poll, ms);
+            }
+        }
+
+        function poll() {
+            if (document.hidden) {
+                schedule(pollSeconds * 1000);
+                return;
+            }
+            lastRun = Date.now();
+            var url = endpoint + (mode === 'student' ? '?action=summary&since=' + latestId : '');
+            request('GET', url)
+                .then(function (res) {
+                    if (res.status === 401 || res.status === 403) {
+                        stopped = true;
+                        return;
+                    }
+                    if (res.status !== 200 || !res.data.ok) {
+                        throw new Error('bad response');
+                    }
+                    failures = 0;
+                    handle(res.data);
+                    schedule(pollSeconds * 1000);
+                })
+                .catch(function () {
+                    failures += 1;
+                    schedule(Math.min(300000, pollSeconds * 1000 * Math.pow(2, failures)));
+                });
+        }
+
+        document.addEventListener('visibilitychange', function () {
+            if (!document.hidden && !stopped && Date.now() - lastRun > 15000) {
+                schedule(0);
+            }
+        });
+        window.addEventListener('pagehide', function () {
+            stopped = true;
+            window.clearTimeout(timer);
+        });
+        // Coming back through the browser's back button: start polling again.
+        window.addEventListener('pageshow', function (event) {
+            if (event.persisted) {
+                stopped = false;
+                schedule(0);
+            }
+        });
+
+        applyCount(unread);
+        schedule(pollSeconds * 1000);
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('[data-fi-bell]').forEach(initBell);
+    });
+})();
