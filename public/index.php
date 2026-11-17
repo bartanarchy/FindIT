@@ -74,7 +74,7 @@ fiPublicNav($user, 'home');
                 <p class="fi-eyebrow">Campus lost &amp; found / FindIT</p>
                 <h1 class="fi-title">Lost something?<br><span>FindIT.</span></h1>
                 <p class="fi-lead">
-                    Find your lost belongings and help others find theirs.
+                    Find your lost belongings and help others find theirs.<br>
                     Browse the items found around campus below.
                 </p>
 
