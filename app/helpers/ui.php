@@ -64,6 +64,10 @@ function fiHead(string $title, string $assetBase = 'assets', string $bodyClass =
     echo '    <meta name="viewport" content="width=device-width, initial-scale=1">' . "\n";
     echo '    <meta name="theme-color" content="#F6F3EC">' . "\n";
     echo '    <title>' . fiE($title) . '</title>' . "\n";
+     // Browser tab icon. $assetBase keeps the path correct for both public and admin pages.
+    // The "?v=1" part forces browsers to reload the icon; raise the number when the logo changes.
+    echo '    <link rel="icon" href="' . fiE($assetBase) . '/images/favicon.ico?v=1" sizes="48x48">' . "\n";
+    echo '    <link rel="icon" href="' . fiE($assetBase) . '/images/favicon.svg?v=1" type="image/svg+xml">' . "\n";
     echo '    <link rel="stylesheet" href="' . fiE($assetBase) . '/vendor/bootstrap/css/bootstrap.min.css">' . "\n";
     echo '    <link rel="stylesheet" href="' . fiE($assetBase) . '/css/style.css">' . "\n";
     echo '</head>' . "\n";
