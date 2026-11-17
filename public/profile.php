@@ -129,7 +129,14 @@ fiPublicNav($sessionUser, 'profile');
 
             <!-- Profile header -->
             <section class="fi-profile-head" aria-labelledby="profileTitle">
-                <?= FiAvatar::render($avatarInfo, 84, 'avatar.php', 'fi-avatar--xl') ?>
+                <button type="button"
+                        class="fi-avatar-zoom-btn"
+                        data-avatar-zoom
+                        aria-label="View profile photo larger"
+                        title="Click to zoom">
+                    <?= FiAvatar::render($avatarInfo, 84, 'avatar.php', 'fi-avatar--xl') ?>
+                    <span class="fi-avatar-zoom-badge" aria-hidden="true">Zoom</span>
+                </button>
                 <div class="fi-profile-id">
                     <h1 class="fi-profile-name" id="profileTitle"><?= fiE($account['name_user']) ?></h1>
                     <p class="fi-profile-sub">Student &middot; ID <?= fiE($account['id_nim']) ?></p>
@@ -289,6 +296,23 @@ fiPublicNav($sessionUser, 'profile');
             </section>
 
             <?php endif; ?>
+        </div>
+    </div>
+
+    <div class="fi-lightbox" id="fiAvatarLightbox" role="dialog" aria-modal="true" aria-labelledby="fiLightboxTitle" hidden>
+        <div class="fi-lightbox-backdrop" data-lightbox-close></div>
+        <div class="fi-lightbox-panel">
+            <div class="fi-lightbox-head">
+                <span class="fi-lightbox-title" id="fiLightboxTitle">Profile photo</span>
+                <div class="fi-lightbox-actions">
+                    <button type="button" class="btn btn-sm btn-outline-light" data-zoom-out aria-label="Zoom out">&minus;</button>
+                    <span class="fi-lightbox-level" data-zoom-level>100%</span>
+                    <button type="button" class="btn btn-sm btn-outline-light" data-zoom-in aria-label="Zoom in">+</button>
+                    <button type="button" class="btn btn-sm btn-outline-light" data-zoom-reset>Reset</button>
+                    <button type="button" class="btn btn-sm btn-light" data-lightbox-close aria-label="Close">&times;</button>
+                </div>
+            </div>
+            <div class="fi-lightbox-stage" data-lightbox-stage></div>
         </div>
     </div>
 </main>
