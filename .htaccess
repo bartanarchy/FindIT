@@ -1,0 +1,5 @@
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+RedirectMatch 404 /\.git
