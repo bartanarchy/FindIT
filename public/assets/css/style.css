@@ -69,6 +69,8 @@
 html {
     scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
+    /* prevent layout shift */
+    scrollbar-gutter: stable;
 }
 
 body.fi-body {
