@@ -18,7 +18,7 @@ $userModel = new User($pdo);
 function profileFlash(string $section, string $type, string $message): void
 {
     $_SESSION['profile_flash'] = ['section' => $section, 'type' => $type, 'message' => $message];
-    header('Location: profile.php');
+    header('Location: profile.php#' . rawurlencode($section));
     exit;
 }
 

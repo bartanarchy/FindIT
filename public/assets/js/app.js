@@ -1025,3 +1025,86 @@
         }
     });
 })();
+
+/* Scroll to the first server-side error alert after a form reload. */
+(function () {
+    var alertEl = document.querySelector('.fi-alert.alert-danger, .fi-alert.alert-warning, .alert-danger');
+    if (alertEl) {
+        alertEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+})();
+
+/* Profile photo zoom lightbox. */
+(function () {
+    var trigger = document.querySelector('[data-avatar-zoom]');
+    var modal = document.getElementById('fiAvatarLightbox');
+    if (!trigger || !modal) {
+        return;
+    }
+
+    var stage = modal.querySelector('[data-lightbox-stage]');
+    var levelEl = modal.querySelector('[data-zoom-level]');
+    var zoomInBtn = modal.querySelector('[data-zoom-in]');
+    var zoomOutBtn = modal.querySelector('[data-zoom-out]');
+    var resetBtn = modal.querySelector('[data-zoom-reset]');
+    var closeBtns = modal.querySelectorAll('[data-lightbox-close]');
+    var scale = 1;
+    var mediaEl = null;
+
+    function applyZoom(nextScale) {
+        scale = Math.min(2.5, Math.max(1, Math.round(nextScale * 100) / 100));
+        if (mediaEl) {
+            mediaEl.style.transform = 'scale(' + scale + ')';
+            mediaEl.classList.toggle('is-zoomed', scale > 1);
+        }
+        if (levelEl) {
+            levelEl.textContent = Math.round(scale * 100) + '%';
+        }
+    }
+
+    function openLightbox() {
+        var source = trigger.querySelector('[data-fi-avatar] img, [data-fi-avatar] svg');
+        if (!source || !stage) {
+            return;
+        }
+
+        stage.innerHTML = '';
+        mediaEl = source.cloneNode(true);
+        mediaEl.removeAttribute('width');
+        mediaEl.removeAttribute('height');
+        mediaEl.classList.add('fi-lightbox-media');
+        mediaEl.addEventListener('click', function () {
+            applyZoom(scale > 1 ? 1 : 1.75);
+        });
+        stage.appendChild(mediaEl);
+
+        applyZoom(1);
+        modal.hidden = false;
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox() {
+        modal.hidden = true;
+        document.body.style.overflow = '';
+        trigger.focus();
+    }
+
+    trigger.addEventListener('click', openLightbox);
+    closeBtns.forEach(function (btn) {
+        btn.addEventListener('click', closeLightbox);
+    });
+    if (zoomInBtn) {
+        zoomInBtn.addEventListener('click', function () { applyZoom(scale + 0.25); });
+    }
+    if (zoomOutBtn) {
+        zoomOutBtn.addEventListener('click', function () { applyZoom(scale - 0.25); });
+    }
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function () { applyZoom(1); });
+    }
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && !modal.hidden) {
+            closeLightbox();
+        }
+    });
+})();
