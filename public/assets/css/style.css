@@ -3121,89 +3121,67 @@ a.fi-profile-stat:hover {
     opacity: 1;
 }
 
+/* Enlarged profile photo: just the picture over a softly blurred page. */
 .fi-lightbox[hidden] {
     display: none;
 }
 
 .fi-lightbox {
     position: fixed;
-    inset: 0;
-    z-index: 1080;
+    inset: 0;                         /* cover the whole screen */
+    z-index: 1080;                    /* above the navbar */
     display: flex;
-    align-items: center;
-    justify-content: center;
+    align-items: center;              /* center vertically */
+    justify-content: center;          /* center horizontally */
     padding: 16px;
 }
 
+/* Light cream background (same color as the site), slightly blurred. */
 .fi-lightbox-backdrop {
     position: absolute;
     inset: 0;
-    background: rgba(17, 24, 39, 0.82);
-    backdrop-filter: blur(3px);
-}
-
-.fi-lightbox-panel {
-    position: relative;
-    z-index: 1;
-    width: min(560px, 100%);
-    border-radius: 16px;
-    background: #181c18;
-    color: #fff;
-    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
-    overflow: hidden;
-}
-
-.fi-lightbox-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 12px 16px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.fi-lightbox-title {
-    font-weight: 600;
-    font-size: 0.95rem;
-}
-
-.fi-lightbox-actions {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.fi-lightbox-level {
-    min-width: 46px;
-    text-align: center;
-    font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.85);
+    background: rgba(246, 243, 236, 0.82);
+    backdrop-filter: blur(8px);
+    cursor: zoom-out;
 }
 
 .fi-lightbox-stage {
+    position: relative;
+    z-index: 1;                       /* stay above the background */
     display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 320px;
-    max-height: 75vh;
-    padding: 24px;
-    overflow: auto;
-    background: #111411;
 }
 
+/* The photo is saved at 400x400, so 400px is the largest size that stays sharp. */
 .fi-lightbox-media {
-    width: 280px;
-    height: 280px;
-    max-width: none;
-    border-radius: 12px;
+    display: block;
+    width: min(86vw, 400px);          /* never wider than the phone screen */
+    height: min(86vw, 400px);
+    border-radius: 20px;
     object-fit: cover;
-    cursor: zoom-in;
-    transform-origin: center center;
-    transition: transform 0.18s ease;
+    box-shadow: 0 20px 50px rgba(59, 67, 51, 0.35);
+    cursor: zoom-out;
 }
 
-.fi-lightbox-media.is-zoomed {
-    cursor: zoom-out;
+/* Small round close button in the corner. */
+.fi-lightbox-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 2;
+    width: 40px;
+    height: 40px;
+    border: 0;
+    border-radius: 50%;
+    background: #fff;
+    color: var(--fi-ink, #3B4333);
+    font-size: 22px;
+    line-height: 1;
+    box-shadow: 0 4px 14px rgba(59, 67, 51, 0.25);
+    cursor: pointer;
+}
+
+.fi-lightbox-close:hover {
+    background: var(--fi-lime, #E4F0B5);
 }
 
 /* Keep anchored sections and error alerts clear of the top bar */
