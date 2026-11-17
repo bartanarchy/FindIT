@@ -133,7 +133,7 @@ fiPublicNav($sessionUser, 'profile');
                         class="fi-avatar-zoom-btn"
                         data-avatar-zoom
                         aria-label="View profile photo larger"
-                        title="Click to zoom">
+                        title="Click to enlarge">
                     <?= FiAvatar::render($avatarInfo, 84, 'avatar.php', 'fi-avatar--xl') ?>
                     <span class="fi-avatar-zoom-badge" aria-hidden="true">Zoom</span>
                 </button>
@@ -299,21 +299,15 @@ fiPublicNav($sessionUser, 'profile');
         </div>
     </div>
 
-    <div class="fi-lightbox" id="fiAvatarLightbox" role="dialog" aria-modal="true" aria-labelledby="fiLightboxTitle" hidden>
+    <?php // Enlarged profile picture. Click anywhere or press Esc to close it. ?>
+    <div class="fi-lightbox" id="fiAvatarLightbox" role="dialog" aria-modal="true" aria-label="Profile photo" hidden>
+        <?php // Soft blurred background. Clicking it closes the picture. ?>
         <div class="fi-lightbox-backdrop" data-lightbox-close></div>
-        <div class="fi-lightbox-panel">
-            <div class="fi-lightbox-head">
-                <span class="fi-lightbox-title" id="fiLightboxTitle">Profile photo</span>
-                <div class="fi-lightbox-actions">
-                    <button type="button" class="btn btn-sm btn-outline-light" data-zoom-out aria-label="Zoom out">&minus;</button>
-                    <span class="fi-lightbox-level" data-zoom-level>100%</span>
-                    <button type="button" class="btn btn-sm btn-outline-light" data-zoom-in aria-label="Zoom in">+</button>
-                    <button type="button" class="btn btn-sm btn-outline-light" data-zoom-reset>Reset</button>
-                    <button type="button" class="btn btn-sm btn-light" data-lightbox-close aria-label="Close">&times;</button>
-                </div>
-            </div>
-            <div class="fi-lightbox-stage" data-lightbox-stage></div>
-        </div>
+
+        <?php // JavaScript puts the big picture here when the profile photo is clicked. ?>
+        <div class="fi-lightbox-stage" data-lightbox-stage></div>
+
+        <button type="button" class="fi-lightbox-close" data-lightbox-close aria-label="Close">&times;</button>
     </div>
 </main>
 

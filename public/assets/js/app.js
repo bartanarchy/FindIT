@@ -951,34 +951,21 @@
     });
 })();
 
-/* Profile photo zoom lightbox. */
+/* Profile photo: click the picture to see it bigger. */
 (function () {
     var trigger = document.querySelector('[data-avatar-zoom]');
     var modal = document.getElementById('fiAvatarLightbox');
+
+    // Run only on pages that have both the clickable photo and the viewer.
     if (!trigger || !modal) {
         return;
     }
 
     var stage = modal.querySelector('[data-lightbox-stage]');
-    var levelEl = modal.querySelector('[data-zoom-level]');
-    var zoomInBtn = modal.querySelector('[data-zoom-in]');
-    var zoomOutBtn = modal.querySelector('[data-zoom-out]');
-    var resetBtn = modal.querySelector('[data-zoom-reset]');
-    var closeBtns = modal.querySelectorAll('[data-lightbox-close]');
-    var scale = 1;
-    var mediaEl = null;
+    var closeButtons = modal.querySelectorAll('[data-lightbox-close]');
+    var closeButton = modal.querySelector('.fi-lightbox-close');
 
-    function applyZoom(nextScale) {
-        scale = Math.min(2.5, Math.max(1, Math.round(nextScale * 100) / 100));
-        if (mediaEl) {
-            mediaEl.style.transform = 'scale(' + scale + ')';
-            mediaEl.classList.toggle('is-zoomed', scale > 1);
-        }
-        if (levelEl) {
-            levelEl.textContent = Math.round(scale * 100) + '%';
-        }
-    }
-
+    // Show a bigger copy of the profile picture.
     function openLightbox() {
         var source = trigger.querySelector('[data-fi-avatar] img, [data-fi-avatar] svg');
         if (!source || !stage) {
@@ -986,39 +973,34 @@
         }
 
         stage.innerHTML = '';
-        mediaEl = source.cloneNode(true);
-        mediaEl.removeAttribute('width');
-        mediaEl.removeAttribute('height');
-        mediaEl.classList.add('fi-lightbox-media');
-        mediaEl.addEventListener('click', function () {
-            applyZoom(scale > 1 ? 1 : 1.75);
-        });
-        stage.appendChild(mediaEl);
 
-        applyZoom(1);
+        // cloneNode(true) copies the picture, so the original on the page stays untouched.
+        var big = source.cloneNode(true);
+        big.removeAttribute('width');     // let the CSS decide the size
+        big.removeAttribute('height');
+        big.removeAttribute('loading');   // load immediately, not "lazy"
+        big.classList.add('fi-lightbox-media');
+        big.addEventListener('click', closeLightbox); // clicking the picture closes it too
+        stage.appendChild(big);
+
         modal.hidden = false;
-        document.body.style.overflow = 'hidden';
+        document.body.style.overflow = 'hidden'; // stop the page from scrolling behind
+        closeButton.focus();                     // keyboard users start on the close button
     }
 
     function closeLightbox() {
         modal.hidden = true;
         document.body.style.overflow = '';
-        trigger.focus();
+        trigger.focus();                         // go back to the photo that was clicked
     }
 
     trigger.addEventListener('click', openLightbox);
-    closeBtns.forEach(function (btn) {
-        btn.addEventListener('click', closeLightbox);
+
+    closeButtons.forEach(function (button) {
+        button.addEventListener('click', closeLightbox);
     });
-    if (zoomInBtn) {
-        zoomInBtn.addEventListener('click', function () { applyZoom(scale + 0.25); });
-    }
-    if (zoomOutBtn) {
-        zoomOutBtn.addEventListener('click', function () { applyZoom(scale - 0.25); });
-    }
-    if (resetBtn) {
-        resetBtn.addEventListener('click', function () { applyZoom(1); });
-    }
+
+    // Pressing Esc closes the picture.
     document.addEventListener('keydown', function (event) {
         if (event.key === 'Escape' && !modal.hidden) {
             closeLightbox();
