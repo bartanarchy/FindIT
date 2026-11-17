@@ -19,13 +19,13 @@ The platform aims to make it easier for students to find information about lost 
 * [x] Displayed item names, categories, locations, and discovery dates.
 * [x] Added a View Details button to each item card.
 * [x] Added initial test data for development.
+* [x] Implement user registration and login.
+* [x] Develop the item claim submission process.
 
 ### In Progress / Planned
 
 * [ ] Develop the Item Detail page.
-* [ ] Implement user registration and login.
 * [ ] Implement secure password hashing and session management.
-* [ ] Develop the item claim submission process.
 * [ ] Display claim status and claim details.
 * [ ] Develop the admin dashboard.
 * [ ] Implement item and claim management for administrators.
