@@ -8,11 +8,12 @@ try {
     // Get all found items so students can browse the item catalog.
     $sql = "
         SELECT
-            i.kode_laporan,
-            i.nama_barang,
-            i.detail_lokasi,
-            i.tanggal_ditemukan,
-            c.name_category
+    i.kode_laporan,
+    i.nama_barang,
+    i.detail_lokasi,
+    i.tanggal_ditemukan,
+    i.photo_url,
+    c.name_category
         FROM public.item AS i
         INNER JOIN public.category AS c
             ON i.id_kategori = c.id_category
@@ -26,7 +27,40 @@ try {
     ]);
 
     // item text is stored encrypted; decrypt it for display.
+    // Item text is stored encrypted; decrypt it for display.
     $items = Crypto::decryptRows($stmt->fetchAll());
+
+    // Prepare photo data for dashboard display.
+   
+// Prepare photo data for dashboard display.
+
+foreach ($items as &$item) {
+    $photoData = $item['photo_url'] ?? null;
+
+    $item['photo_src'] = null;
+
+    // Convert PostgreSQL LOB stream into binary string.
+    if (is_resource($photoData)) {
+        $photoData = stream_get_contents($photoData);
+    }
+
+    if (is_string($photoData) && $photoData !== '') {
+        $fileInfo = new finfo(FILEINFO_MIME_TYPE);
+        $mimeType = $fileInfo->buffer($photoData);
+
+        $allowedTypes = [
+            'image/jpeg',
+            'image/png',
+            'image/webp'
+        ];
+
+        if (in_array($mimeType, $allowedTypes, true)) {
+            $item['photo_src'] =
+                'data:' . $mimeType . ';base64,' . base64_encode($photoData);
+        }
+    }
+}
+unset($item);
 } catch (PDOException $e) {
     // Keep database details in the server log.
     error_log('[FindIT] Failed to retrieve items: ' . $e->getMessage());
@@ -167,47 +201,67 @@ fiPublicNav($user, 'home');
                             (string) ($item['detail_lokasi'] ?? ''),
                         ]));
                         ?>
-                        <article
-                            class="fi-item-card"
-                            data-item-card
-                            data-search="<?= fiE($searchText) ?>"
-                            data-category="<?= fiE($item['name_category'] ?? '') ?>">
+                        
+<article
+    class="fi-item-card"
+    data-item-card
+    data-search="<?= fiE($searchText) ?>"
+    data-category="<?= fiE($item['name_category'] ?? '') ?>">
 
-                            <div class="fi-item-card-top">
-                                <span class="fi-chip">
-                                    <?= fiOr($item['name_category'] ?? '', 'Uncategorized') ?>
-                                </span>
-                                <span class="fi-item-card-id">#<?= (int) $item['kode_laporan'] ?></span>
-                            </div>
+    <div class="fi-item-card-image">
+        <?php if (!empty($item['photo_src'])): ?>
+            <img
+                src="<?= fiE($item['photo_src']) ?>"
+                alt="<?= fiE($item['nama_barang']) ?>"
+                loading="lazy">
+        <?php else: ?>
+            <div class="fi-item-card-placeholder">
+                <span>FindIT</span>
+                <small>No photo available</small>
+            </div>
+        <?php endif; ?>
+    </div>
 
-                            <h3 class="fi-item-card-title">
-                                <?= fiE($item['nama_barang']) ?>
-                            </h3>
+    <div class="fi-item-card-content">
+        <div class="fi-item-card-top">
+            <span class="fi-chip">
+                <?= fiOr($item['name_category'] ?? '', 'Uncategorized') ?>
+            </span>
+            <span class="fi-item-card-id">
+                #<?= (int) $item['kode_laporan'] ?>
+            </span>
+        </div>
 
-                            <div class="fi-item-card-meta">
-                                <div class="fi-field">
-                                    <span class="fi-field-label">Location</span>
-                                    <p class="fi-field-value">
-                                        <?= fiOr($item['detail_lokasi'] ?? '', 'Not specified') ?>
-                                    </p>
-                                </div>
+        <h3 class="fi-item-card-title">
+            <?= fiE($item['nama_barang']) ?>
+        </h3>
 
-                                <div class="fi-field">
-                                    <span class="fi-field-label">Date found</span>
-                                    <p class="fi-field-value">
-                                        <?= fiDate($item['tanggal_ditemukan'] ?? '') ?>
-                                    </p>
-                                </div>
-                            </div>
+        <div class="fi-item-card-meta">
+            <div class="fi-field">
+                <span class="fi-field-label">Location</span>
+                <p class="fi-field-value">
+                    <?= fiOr($item['detail_lokasi'] ?? '', 'Not specified') ?>
+                </p>
+            </div>
 
-                            <div class="fi-item-card-footer">
-                                <a
-                                    class="btn btn-outline-secondary w-100"
-                                    href="item-detail.php?id=<?= (int) $item['kode_laporan'] ?>">
-                                    View details
-                                </a>
-                            </div>
-                        </article>
+            <div class="fi-field">
+                <span class="fi-field-label">Date found</span>
+                <p class="fi-field-value">
+                    <?= fiDate($item['tanggal_ditemukan'] ?? '') ?>
+                </p>
+            </div>
+        </div>
+
+        <div class="fi-item-card-footer">
+            <a
+                class="btn btn-outline-secondary w-100"
+                href="item-detail.php?id=<?= (int) $item['kode_laporan'] ?>">
+                View details
+            </a>
+        </div>
+    </div>
+</article>
+
                     <?php endforeach; ?>
                 </div>
 
@@ -230,4 +284,5 @@ fiPublicNav($user, 'home');
 <?php fiFooter(); ?>
 <?php fiScripts('assets'); ?>
 </body>
+
 </html>
