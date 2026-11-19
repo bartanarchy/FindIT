@@ -86,7 +86,10 @@ function fiPublicNav(?array $user, string $active = ''): void
     echo '<header class="fi-navbar">' . "\n";
     echo '<nav class="navbar navbar-expand-md" aria-label="Main navigation">' . "\n";
     echo '<div class="fi-container">' . "\n";
-    echo '<a class="fi-brand" href="index.php">FindIT<span>.</span></a>' . "\n";
+    echo '<a class="fi-brand" href="index.php">'
+    . '<img src="assets/images/findit-logo.png" alt="FindIT Logo" class="fi-brand-logo">'
+    . '<span class="fi-brand-name">FindIT</span>'
+    . '</a>' . "\n";
     if ($role === 'student') {
         echo fiStudentBell($user, $active) . "\n";
     }
@@ -145,8 +148,11 @@ function fiAdminNav(string $active = ''): void
     echo '<header class="fi-navbar fi-navbar--admin">' . "\n";
     echo '<nav class="navbar navbar-expand-md" aria-label="Admin navigation">' . "\n";
     echo '<div class="fi-container">' . "\n";
-    echo '<a class="fi-brand" href="index.php">FindIT<span>.</span>'
-        . '<small class="fi-brand-tag">Admin</small></a>' . "\n";
+    echo '<a class="fi-brand" href="index.php">'
+    . '<img src="../public/assets/images/findit-logo.png" alt="FindIT Logo" class="fi-brand-logo">'
+    . '<span class="fi-brand-name">FindIT</span>'
+    . '<small class="fi-brand-tag">Admin</small>'
+    . '</a>' . "\n";
     echo fiAdminBell() . "\n";
     echo '<button class="navbar-toggler fi-toggler" type="button" data-bs-toggle="collapse" '
         . 'data-bs-target="#fiNav" aria-controls="fiNav" aria-expanded="false" '

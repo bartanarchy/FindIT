@@ -3190,3 +3190,43 @@ a.fi-profile-stat:hover {
     scroll-margin-top: 84px;
 }
 
+
+/* FindIT Brand Logo */
+.fi-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+}
+
+.fi-brand-logo {
+    width: 58px;
+    height: 58px;
+    object-fit: contain;
+    flex-shrink: 0;
+    border-radius: 10px;
+}
+
+.fi-brand-name {
+    font-size: 1.55rem;
+    font-weight: 800;
+    letter-spacing: -0.8px;
+    color: #173F35;
+}
+
+.fi-brand-tag {
+    margin-left: 4px;
+}
+
+@media (max-width: 576px) {
+    .fi-brand-logo {
+        width: 46px;
+        height: 46px;
+    }
+
+    .fi-brand-name {
+        font-size: 1.3rem;
+    }
+}
+
+
