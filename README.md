@@ -60,8 +60,6 @@ The platform centralizes information that used to be scattered across chat group
 ### Planned
 
 * [ ] Limit repeated login and password-reset attempts.
-* [ ] Stricter session cookie settings.
-* [ ] Different access levels for administrators.
 * [ ] New FindIT logo across the interface.
 * [ ] Final testing with clean demonstration data.
 
