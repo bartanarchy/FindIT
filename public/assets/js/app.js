@@ -1014,5 +1014,67 @@
     if (alertEl) {
         alertEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
+})
+
+/* Found item photo preview */
+(function () {
+    'use strict';
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var input = document.getElementById('item_photo');
+        var container = document.getElementById('photo-preview-container');
+        var preview = document.getElementById('photo-preview');
+
+        if (!input || !container || !preview) {
+            return;
+        }
+
+        var maxBytes = 5 * 1024 * 1024;
+        var allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        var objectUrl = null;
+
+        input.addEventListener('change', function () {
+            var file = input.files && input.files[0];
+
+            input.setCustomValidity('');
+
+            if (objectUrl) {
+                URL.revokeObjectURL(objectUrl);
+                objectUrl = null;
+            }
+
+            preview.src = '';
+            container.classList.add('d-none');
+
+            if (!file) {
+                return;
+            }
+
+            if (allowedTypes.indexOf(file.type) === -1) {
+                input.setCustomValidity('Only JPG, PNG, and WEBP images are allowed.');
+                input.reportValidity();
+                input.value = '';
+                return;
+            }
+
+            if (file.size > maxBytes) {
+                input.setCustomValidity('The maximum photo size is 5 MB.');
+                input.reportValidity();
+                input.value = '';
+                return;
+            }
+
+            objectUrl = URL.createObjectURL(file);
+            preview.src = objectUrl;
+            container.classList.remove('d-none');
+        });
+
+        window.addEventListener('beforeunload', function () {
+            if (objectUrl) {
+                URL.revokeObjectURL(objectUrl);
+            }
+        });
+    });
 })();
+
 
