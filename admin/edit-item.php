@@ -44,7 +44,8 @@ try {
             detail_lokasi,
             tanggal_ditemukan,
             ciri_umum,
-            ciri_khusus
+            ciri_khusus,
+            REPLACE(ENCODE(photo_url, \'base64\'), CHR(10), \'\') AS photo_base64
          FROM public.item
          WHERE kode_laporan = :item_id
          LIMIT 1'
@@ -53,6 +54,28 @@ try {
     $itemStmt->execute(['item_id' => $itemId]);
     $item = $itemStmt->fetch();
     $item = $item ? Crypto::decryptRow($item) : $item;
+    if ($item) {
+        $item['photo_src'] = null;
+
+        $photoBase64 = $item['photo_base64'] ?? '';
+
+        if (is_string($photoBase64) && $photoBase64 !== '') {
+            $photoData = base64_decode($photoBase64, true);
+
+            if ($photoData !== false) {
+                $fileInfo = new finfo(FILEINFO_MIME_TYPE);
+                $mimeType = $fileInfo->buffer($photoData);
+
+                $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+                if (in_array($mimeType, $allowedTypes, true)) {
+                    $item['photo_src'] = 'data:' . $mimeType . ';base64,' . base64_encode($photoData);
+                }
+            }
+        }
+
+        unset($item['photo_base64']);
+    }
 
     if (!$item) {
         http_response_code(404);
@@ -208,7 +231,16 @@ fiAdminNav('items');
                     <p class="fi-form-section-hint">
                         This information is shown publicly on the item listing.
                     </p>
-
+                    <?php if (!empty($item['photo_src'])): ?>
+                        <div class="fi-edit-item-photo">
+                            <img
+                                src="<?= escapeEditItemHtml($item['photo_src']) ?>"
+                                alt="Reported item photo"
+                                style="width: 100%; max-width: 320px; height: 240px; object-fit: cover; border-radius: 20px;">
+                        </div>
+                    <?php else: ?>
+                        <p class="text-muted small">No photo was uploaded for this item.</p>
+                    <?php endif; ?>
                     <div class="row g-3">
                         <div class="col-12 col-md-7">
                             <label for="nama_barang" class="form-label">
@@ -318,4 +350,5 @@ fiAdminNav('items');
 <?php fiFooter(); ?>
 <?php fiScripts('../public/assets'); ?>
 </body>
+
 </html>
