@@ -104,8 +104,17 @@ try {
     require_once dirname(__DIR__) . '/app/helpers/crypto.php';
     require_once dirname(__DIR__) . '/app/helpers/campus_email.php';
 
+    // Pages that must keep working without the database: Backup Management (to restore),
+    // the emergency admin sign-in, and sign-out.
     $script = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
-    if (substr($script, -17) !== '/admin/backups.php') {
+    $worksWithoutDatabase = false;
+    foreach (['/admin/backups.php', '/public/recovery-login.php', '/public/logout.php'] as $page) {
+        if (substr($script, -strlen($page)) === $page) {
+            $worksWithoutDatabase = true;
+            break;
+        }
+    }
+    if (!$worksWithoutDatabase) {
         require_once dirname(__DIR__) . '/app/helpers/maintenance.php';
         fiDatabaseDownPage();
     }
