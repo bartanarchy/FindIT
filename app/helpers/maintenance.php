@@ -2,7 +2,8 @@
 
 // Shown instead of a PHP crash when the database cannot be reached (for example it was
 // deleted and is waiting to be restored). Signed-in admins are sent straight to Backup
-// Management, which works without the database.
+// Management, which works without the database. Everyone else sees this page; the
+// emergency admin account (app/helpers/recovery.php) can sign in from here.
 
 require_once __DIR__ . '/auth.php';
 
@@ -33,8 +34,9 @@ function fiDatabaseDownPage(): void
         <p class="fi-eyebrow">FindIT</p>
         <h1>We'll be right back.</h1>
         <p>The website is being maintained and its data is being recovered. Please try again in a few minutes.</p>
-        <p class="small text-muted mb-1">For the administrator: if you are signed in, reload this page and you will be taken to Backup Management.
-            Otherwise run this on the server computer:</p>
+        <p class="small text-muted mb-2">For the administrator: sign in with the emergency account to open Backup Management and restore the database.</p>
+        <p><a class="btn btn-outline-secondary btn-sm" href="<?= htmlspecialchars($base . '/public/recovery-login.php', ENT_QUOTES, 'UTF-8') ?>">Administrator recovery sign-in</a></p>
+        <p class="small text-muted mb-1">No emergency account yet? Run this on the server computer:</p>
         <p class="small"><code>php scripts\restore.php</code></p>
     </div>
 </main>
