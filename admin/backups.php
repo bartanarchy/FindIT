@@ -2,6 +2,7 @@
 require_once dirname(__DIR__) . '/app/helpers/auth.php';
 require_once dirname(__DIR__) . '/app/helpers/ui.php';
 require_once dirname(__DIR__) . '/app/helpers/backup_ui.php';
+require_once dirname(__DIR__) . '/app/helpers/recovery.php';
 
 // Admin only. Does not need the database, so it still opens when the database is gone.
 requireRole('admin');
@@ -76,6 +77,15 @@ if ($webEnabled) {
                 'by' => fiAdminLabel(),
                 'confirm' => (string) ($_POST['confirm'] ?? ''),
             ]);
+
+            // The restored data may not contain this session's account, and the emergency
+            // session can only open this page. So after a successful restore the person
+            // signs out and goes to the normal sign-in page.
+            if (($result['status'] ?? '') === 'SUCCESS') {
+                fiClearSession();
+                header('Location: ../public/login.php?restored=1');
+                exit;
+            }
         }
     }
 }
