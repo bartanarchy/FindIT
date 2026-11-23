@@ -1077,4 +1077,56 @@
     });
 })();
 
+// Admin edit item: preview a replacement photo before uploading.
+(function () {
+    'use strict';
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const photoInput = document.getElementById('photo');
+        const previewContainer = document.getElementById('photo-preview-container');
+        const previewImage = document.getElementById('photo-preview');
+
+        if (!photoInput || !previewContainer || !previewImage) {
+            return;
+        }
+
+        let previewUrl = null;
+
+        photoInput.addEventListener('change', function () {
+            const file = photoInput.files[0];
+
+            if (!file) {
+                previewContainer.hidden = true;
+                previewImage.removeAttribute('src');
+                return;
+            }
+
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+            const maxSize = 5 * 1024 * 1024;
+
+            if (!allowedTypes.includes(file.type)) {
+                alert('Only JPG, PNG, and WEBP photos are allowed.');
+                photoInput.value = '';
+                previewContainer.hidden = true;
+                return;
+            }
+
+            if (file.size > maxSize) {
+                alert('The photo must not exceed 5 MB.');
+                photoInput.value = '';
+                previewContainer.hidden = true;
+                return;
+            }
+
+            if (previewUrl) {
+                URL.revokeObjectURL(previewUrl);
+            }
+
+            previewUrl = URL.createObjectURL(file);
+            previewImage.src = previewUrl;
+            previewContainer.hidden = false;
+        });
+    });
+})();
+
 

@@ -3317,5 +3317,65 @@ a.fi-profile-stat:hover {
     }
 }
 
+/* Public item detail photo */
+.fi-item-detail-photo {
+    width: 100%;
+    margin-bottom: 24px;
+    overflow: hidden;
+    background: var(--fi-paper-2);
+    border: 1px solid var(--fi-border);
+    border-radius: 20px;
+}
+.fi-item-detail-photo img {
+    display: block;
+    width: 100%;
+    max-height: 420px;
+    object-fit: contain;
+    margin: 0 auto;
+    border-radius: 20px;
+}
+
+/* Admin item photo thumbnail */
+.fi-admin-item-thumbnail {
+    display: block;
+    width: 76px;
+    height: 64px;
+    margin-bottom: 8px;
+    object-fit: cover;
+    border-radius: 12px;
+    border: 1px solid var(--fi-border);
+}
+
+.fi-admin-item-no-photo {
+    display: flex;
+    width: 76px;
+    height: 64px;
+    margin-bottom: 8px;
+    align-items: center;
+    justify-content: center;
+    background: var(--fi-paper-2);
+    color: var(--fi-muted);
+    border-radius: 12px;
+    font-size: 0.7rem;
+}
+
+/* Admin claim detail item photo */
+.fi-claim-item-photo {
+    width: 100%;
+    margin-bottom: 32px;
+    overflow: hidden;
+    background: var(--fi-paper-2);
+    border: 1px solid var(--fi-border);
+    border-radius: 20px;
+}
+
+.fi-claim-item-photo img {
+    display: block;
+    width: 100%;
+    max-height: 420px;
+    object-fit: contain;
+    margin: 0 auto;
+    border-radius: 20px !important;
+}
 
 

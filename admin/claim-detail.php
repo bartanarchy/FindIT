@@ -40,10 +40,15 @@ if (!$claimId || $claimId < 1) {
                 i.status_barang,
                 i.detail_lokasi,
                 i.tanggal_ditemukan,
-                i.ciri_umum,
-                i.ciri_khusus,
-                u.name_user,
-                u.email_kampus,
+               i.ciri_umum,
+i.ciri_khusus,
+CASE
+    WHEN i.photo_url IS NOT NULL
+    THEN REPLACE(ENCODE(i.photo_url, \'base64\'), CHR(10), \'\')
+    ELSE NULL
+END AS photo_base64,
+u.name_user,
+u.email_kampus,
                 u.no_telp,
                 a.nama_admin
             FROM public.claim AS c
@@ -61,6 +66,28 @@ if (!$claimId || $claimId < 1) {
         $stmt->execute(['claim_id' => $claimId]);
         $claim = $stmt->fetch() ?: null;
         $claim = $claim ? Crypto::decryptRow($claim) : null;
+        if ($claim) {
+            $claim['photo_src'] = null;
+
+            $photoBase64 = $claim['photo_base64'] ?? '';
+
+            if (is_string($photoBase64) && $photoBase64 !== '') {
+                $photoData = base64_decode($photoBase64, true);
+
+                if ($photoData !== false) {
+                    $fileInfo = new finfo(FILEINFO_MIME_TYPE);
+                    $mimeType = $fileInfo->buffer($photoData);
+
+                    $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+                    if (in_array($mimeType, $allowedTypes, true)) {
+                        $claim['photo_src'] = 'data:' . $mimeType . ';base64,' . base64_encode($photoData);
+                    }
+                }
+            }
+
+            unset($claim['photo_base64']);
+        }
 
         if (!$claim) {
             http_response_code(404);
@@ -166,11 +193,11 @@ if ($claim && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     if (
                         $lockedItem
                         && (int) $lockedItem['id_user_pelapor']
-                            === (int) $lockedClaim['id_user_pengaju']
+                        === (int) $lockedClaim['id_user_pengaju']
                     ) {
                         throw new RuntimeException(
                             'This claim cannot be approved because the claimant reported this item. '
-                            . 'Please reject it.'
+                                . 'Please reject it.'
                         );
                     }
 
@@ -381,6 +408,28 @@ if ($claimId && $errorMessage === '') {
         $stmt->execute(['claim_id' => $claimId]);
         $claim = $stmt->fetch() ?: null;
         $claim = $claim ? Crypto::decryptRow($claim) : null;
+        if ($claim) {
+            $claim['photo_src'] = null;
+
+            $photoBase64 = $claim['photo_base64'] ?? '';
+
+            if (is_string($photoBase64) && $photoBase64 !== '') {
+                $photoData = base64_decode($photoBase64, true);
+
+                if ($photoData !== false) {
+                    $fileInfo = new finfo(FILEINFO_MIME_TYPE);
+                    $mimeType = $fileInfo->buffer($photoData);
+
+                    $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+                    if (in_array($mimeType, $allowedTypes, true)) {
+                        $claim['photo_src'] = 'data:' . $mimeType . ';base64,' . base64_encode($photoData);
+                    }
+                }
+            }
+
+            unset($claim['photo_base64']);
+        }
     } catch (PDOException $e) {
         error_log('[FindIT] Failed to refresh claim details: ' . $e->getMessage());
 
@@ -543,7 +592,17 @@ fiAdminNav('claims');
                         <h2 id="item-heading" class="fi-panel-title">
                             <?= fiOr($claim['nama_barang'] ?? '', 'Item unavailable') ?>
                         </h2>
-
+                        <?php if (!empty($claim['photo_src'])): ?>
+                            <div class="fi-claim-item-photo" style="margin-bottom: 32px !important;">
+                                <img
+                                    src="<?= fiE($claim['photo_src']) ?>"
+                                    alt="<?= fiE($claim['nama_barang'] ?? 'Reported item') ?>"
+                                    loading="lazy"
+                                    style="border-radius: 20px !important;">
+                            </div>
+                        <?php else: ?>
+                            <p class="text-secondary small mb-3">No item photo available.</p>
+                        <?php endif; ?>
                         <dl class="fi-fields mb-0">
                             <div class="fi-field">
                                 <dt class="fi-field-label">Report ID</dt>
@@ -634,11 +693,11 @@ fiAdminNav('claims');
                                         maxlength="5000"
                                         data-counter
                                         required><?= fiE(
-                                            isset($_POST['catatan_admin'])
-                                            && is_string($_POST['catatan_admin'])
-                                                ? $_POST['catatan_admin']
-                                                : ''
-                                        ) ?></textarea>
+                                                        isset($_POST['catatan_admin'])
+                                                            && is_string($_POST['catatan_admin'])
+                                                            ? $_POST['catatan_admin']
+                                                            : ''
+                                                    ) ?></textarea>
 
                                     <div class="invalid-feedback">
                                         Please explain your decision.
@@ -663,11 +722,11 @@ fiAdminNav('claims');
                                         data-required-for="approve"
                                         placeholder="Example: IT Building, Administration Office"
                                         value="<?= fiE(
-                                            isset($_POST['lokasi_pengambilan'])
-                                            && is_string($_POST['lokasi_pengambilan'])
-                                                ? $_POST['lokasi_pengambilan']
-                                                : ''
-                                        ) ?>">
+                                                    isset($_POST['lokasi_pengambilan'])
+                                                        && is_string($_POST['lokasi_pengambilan'])
+                                                        ? $_POST['lokasi_pengambilan']
+                                                        : ''
+                                                ) ?>">
 
                                     <div class="invalid-feedback">
                                         Enter a pickup location before approving.
@@ -786,4 +845,5 @@ fiAdminNav('claims');
 <?php fiScripts('../public/assets'); ?>
 
 </body>
+
 </html>

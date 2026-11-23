@@ -17,10 +17,11 @@ try {
             i.nama_barang,
             i.detail_lokasi,
             i.tanggal_ditemukan,
-            i.ciri_umum,
-            i.status_barang,
-            i.id_user_pelapor,
-            c.name_category
+           i.ciri_umum,
+REPLACE(ENCODE(i.photo_url, 'base64'), CHR(10), '') AS photo_base64,
+i.status_barang,
+i.id_user_pelapor,
+c.name_category
         FROM public.item AS i
         INNER JOIN public.category AS c
             ON i.id_kategori = c.id_category
@@ -35,6 +36,35 @@ try {
 
     $item = $stmt->fetch();
     $item = $item ? Crypto::decryptRow($item) : $item;
+
+    // Prepare item photo for browser display.
+    if ($item) {
+        $item['photo_src'] = null;
+
+        $photoBase64 = $item['photo_base64'] ?? '';
+
+        if (is_string($photoBase64) && $photoBase64 !== '') {
+            $photoData = base64_decode($photoBase64, true);
+
+            if ($photoData !== false) {
+                $fileInfo = new finfo(FILEINFO_MIME_TYPE);
+                $mimeType = $fileInfo->buffer($photoData);
+
+                $allowedTypes = [
+                    'image/jpeg',
+                    'image/png',
+                    'image/webp'
+                ];
+
+                if (in_array($mimeType, $allowedTypes, true)) {
+                    $item['photo_src'] =
+                        'data:' . $mimeType . ';base64,' . base64_encode($photoData);
+                }
+            }
+        }
+
+        unset($item['photo_base64']);
+    }
 } catch (PDOException $e) {
     error_log('[FindIT] Failed to retrieve item details: ' . $e->getMessage());
     http_response_code(500);
@@ -147,6 +177,16 @@ fiPublicNav($viewer, 'home');
                             <span class="small">Report #<?= (int) $item['kode_laporan'] ?></span>
                         </div>
 
+                        <?php if (!empty($item['photo_src'])): ?>
+                            <div class="fi-item-detail-photo">
+                                <img
+                                    src="<?= fiE($item['photo_src']) ?>"
+                                    alt="<?= fiE($item['nama_barang']) ?>"
+                                    loading="lazy"
+                                    style="border-radius: 20px !important;">
+                            </div>
+                        <?php endif; ?>
+
                         <h1 class="fi-title mb-3" style="font-size: clamp(1.9rem, 4.5vw, 2.8rem);">
                             <?= fiE($item['nama_barang']) ?>
                         </h1>
@@ -186,10 +226,10 @@ fiPublicNav($viewer, 'home');
 
                 <aside class="col-12 col-lg-4">
                     <div class="fi-panel fi-sticky">
-                    <p class="fi-panel-kicker">Claim process</p>
+                        <p class="fi-panel-kicker">Claim process</p>
                         <h2 class="h5 mb-2">Is this your item?</h2>
-                        
-                             <?php if ($isOwnReport): ?>
+
+                        <?php if ($isOwnReport): ?>
                             <p class="text-secondary mb-3">
                                 You reported this item as found, so you cannot claim it.
                                 Only the real owner can submit a claim.
@@ -248,4 +288,5 @@ fiPublicNav($viewer, 'home');
 <?php fiFooter(); ?>
 <?php fiScripts('assets'); ?>
 </body>
+
 </html>
