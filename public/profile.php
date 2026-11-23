@@ -6,6 +6,8 @@ require_once dirname(__DIR__) . '/app/helpers/csrf.php';
 require_once dirname(__DIR__) . '/app/helpers/ui.php';
 require_once dirname(__DIR__) . '/app/helpers/avatar.php';
 require_once dirname(__DIR__) . '/app/models/User.php';
+require_once dirname(__DIR__) . '/app/models/EmailVerification.php';
+require_once dirname(__DIR__) . '/app/helpers/mailer.php';
 
 // Only signed-in students have a profile page.
 requireRole('student');
@@ -24,7 +26,7 @@ function profileFlash(string $section, string $type, string $message): void
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = (string) ($_POST['action'] ?? '');
-    $section = in_array($action, ['change_password'], true) ? 'password' : 'photo';
+    $section = $action === 'change_password' ? 'password' : ($action === 'send_verification' ? 'verify' : 'photo');
 
     if (!verifyCsrfToken((string) ($_POST['csrf_token'] ?? ''))) {
         profileFlash($section, 'danger', 'Your session has expired. Please refresh the page and try again.');
@@ -48,6 +50,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'remove_photo':
                 FiAvatar::remove($pdo, $userId);
                 profileFlash('photo', 'success', 'Your profile picture has been removed.');
+                break;
+
+            case 'send_verification':
+                $verification = new EmailVerification($pdo);
+                $account = $userModel->findById($userId);
+
+                if ($account === null) {
+                    profileFlash('verify', 'danger', 'Your account could not be found.');
+                }
+                if ($verification->isVerified($userId)) {
+                    profileFlash('verify', 'success', 'Your campus email is already verified.');
+                }
+
+                // One link per minute, so the button cannot be used to flood a mailbox.
+                $wait = $verification->secondsSinceLastLink($userId);
+                if ($wait !== null && $wait < 60) {
+                    profileFlash('verify', 'warning', 'A link was just sent. Please wait ' . (60 - $wait) . ' seconds before asking for another one.');
+                }
+
+                $rawToken = bin2hex(random_bytes(32));
+                $verification->createToken($userId, hash('sha256', $rawToken), 60);
+
+                $sent = sendVerificationEmail(
+                    (string) $account['email_kampus'],
+                    (string) ($account['name_user'] ?? 'Student'),
+                    APP_URL . '/verify-email.php?token=' . $rawToken
+                );
+
+                if (!$sent) {
+                    error_log('[FindIT] Failed to send verification email to user ID ' . $userId);
+                    profileFlash('verify', 'danger', 'We could not send the email right now. Please try again in a moment.');
+                }
+
+                profileFlash('verify', 'success', 'We sent a verification link to ' . $account['email_kampus'] . '. Open it within 60 minutes.');
                 break;
 
             case 'change_password':
@@ -110,6 +146,7 @@ try {
 }
 
 $avatarInfo = FiAvatar::info($pdo, $userId);
+$isVerified = $account !== null && !empty($account['email_verified_at']);
 $csrfToken = generateCsrfToken();
 $flashFor = static function (string $section) use ($flash): ?array {
     return ($flash && ($flash['section'] ?? '') === $section) ? $flash : null;
@@ -142,9 +179,49 @@ fiPublicNav($sessionUser, 'profile');
                     <p class="fi-profile-sub">Student &middot; ID <?= fiE($account['id_nim']) ?></p>
                     <div class="fi-profile-badges">
                         <span class="fi-badge fi-badge--info">Student account</span>
-                        <span class="fi-badge fi-badge--success">Verified</span>
+                        <?php if ($isVerified): ?>
+                            <span class="fi-badge fi-badge--success">Verified</span>
+                        <?php else: ?>
+                            <span class="fi-badge fi-badge--warning">Not verified</span>
+                        <?php endif; ?>
                     </div>
                 </div>
+            </section>
+
+            <!-- Email verification -->
+            <section class="fi-profile-card fi-verify-card<?= $isVerified ? ' fi-verify-card--ok' : '' ?>"
+                     aria-labelledby="verifyTitle" id="verify">
+                <div class="fi-card-title">
+                    <span class="fi-card-icon" aria-hidden="true"><?= fiIcon($isVerified ? 'shield-check' : 'mail', 22) ?></span>
+                    <div>
+                        <h2 class="fi-profile-h" id="verifyTitle">Email verification</h2>
+                        <p class="fi-card-sub"><?= $isVerified ? 'Your campus email is confirmed' : 'Confirm your campus email to use FindIT' ?></p>
+                    </div>
+                </div>
+
+                <?php if ($f = $flashFor('verify')): ?>
+                    <?php fiAlert($f['type'], $f['message'], $f['type'] === 'success'); ?>
+                <?php endif; ?>
+
+                <?php if ($isVerified): ?>
+                    <p class="mb-0">Your campus email <strong><?= fiE($account['email_kampus']) ?></strong> was verified on
+                        <?= fiDateTime($account['email_verified_at']) ?>. You can report found items and claim items.</p>
+                <?php else: ?>
+                    <p>Before you can report a found item or claim an item, we need to confirm that
+                        <strong><?= fiE($account['email_kampus']) ?></strong> is really yours.</p>
+                    <ol class="fi-verify-steps">
+                        <li>Press <strong>Send verification email</strong>.</li>
+                        <li>Open the message we send to your campus email.</li>
+                        <li>Click the link inside. This page will then show <strong>Verified</strong>.</li>
+                    </ol>
+                    <form method="POST" action="profile.php" class="needs-validation" novalidate>
+                        <input type="hidden" name="csrf_token" value="<?= fiE($csrfToken) ?>">
+                        <input type="hidden" name="action" value="send_verification">
+                        <button type="submit" class="btn btn-primary"
+                                data-loading-text="Sending...">Send verification email</button>
+                    </form>
+                    <p class="form-text mt-2 mb-0">The link works for 60 minutes. Check your spam folder if you do not see it.</p>
+                <?php endif; ?>
             </section>
 
             <!-- Account overview -->
@@ -197,10 +274,14 @@ fiPublicNav($sessionUser, 'profile');
                         <label for="photo-file" class="form-label">Add a photo</label>
                         <input type="file" class="form-control" id="photo-file" name="photo"
                                accept="image/jpeg,image/png,image/webp" data-photo-input required>
-                        <div class="form-text">JPG, PNG or WebP, up to 2 MB. It is cropped to a square.</div>
+                        <div class="form-text">JPG, PNG or WebP. After choosing a photo you can move and zoom it to fit the circle.</div>
                         <div class="invalid-feedback">Please choose a photo.</div>
-                        <button type="submit" class="btn btn-primary btn-sm mt-3"
-                                data-loading-text="Uploading...">Upload photo</button>
+                        <div class="d-flex flex-wrap gap-2 mt-3">
+                            <button type="submit" class="btn btn-primary btn-sm"
+                                    data-loading-text="Uploading...">Upload photo</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm d-none"
+                                    data-photo-adjust>Adjust photo</button>
+                        </div>
                     </div>
                 </form>
 
@@ -241,7 +322,13 @@ fiPublicNav($sessionUser, 'profile');
 
             <!-- Change password -->
             <section class="fi-profile-card" aria-labelledby="passwordTitle" id="password">
-                <h2 class="fi-profile-h" id="passwordTitle">Change password</h2>
+                <div class="fi-card-title">
+                    <span class="fi-card-icon" aria-hidden="true"><?= fiIcon('lock', 22) ?></span>
+                    <div>
+                        <h2 class="fi-profile-h" id="passwordTitle">Change password</h2>
+                        <p class="fi-card-sub">Keep your student account protected</p>
+                    </div>
+                </div>
 
                 <?php if ($f = $flashFor('password')): ?>
                     <?php fiAlert($f['type'], $f['message'], $f['type'] === 'success'); ?>
@@ -255,7 +342,8 @@ fiPublicNav($sessionUser, 'profile');
                         <label for="current_password" class="form-label">Current password</label>
                         <div class="input-group has-validation">
                             <input type="password" class="form-control" id="current_password"
-                                   name="current_password" autocomplete="current-password" required>
+                                   name="current_password" autocomplete="current-password"
+                                   placeholder="Enter your current password" required>
                             <button type="button" class="btn fi-pass-toggle"
                                     data-toggle-password="#current_password"
                                     aria-label="Show or hide current password">Show</button>
@@ -263,31 +351,45 @@ fiPublicNav($sessionUser, 'profile');
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label for="new_password" class="form-label">New password</label>
-                        <div class="input-group has-validation">
-                            <input type="password" class="form-control" id="new_password"
-                                   name="new_password" minlength="8" maxlength="72"
-                                   autocomplete="new-password" placeholder="At least 8 characters" required>
-                            <button type="button" class="btn fi-pass-toggle"
-                                    data-toggle-password="#new_password"
-                                    aria-label="Show or hide new password">Show</button>
-                            <div class="invalid-feedback">Password must be at least 8 characters.</div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="new_password" class="form-label">New password</label>
+                            <div class="input-group has-validation">
+                                <input type="password" class="form-control" id="new_password"
+                                       name="new_password" minlength="8" maxlength="72"
+                                       autocomplete="new-password" placeholder="At least 8 characters"
+                                       aria-describedby="passwordStrength" required>
+                                <button type="button" class="btn fi-pass-toggle"
+                                        data-toggle-password="#new_password"
+                                        aria-label="Show or hide new password">Show</button>
+                                <div class="invalid-feedback">Password must be at least 8 characters.</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="confirm_password" class="form-label">Confirm new password</label>
+                            <div class="input-group has-validation">
+                                <input type="password" class="form-control" id="confirm_password"
+                                       name="confirm_password" minlength="8" maxlength="72"
+                                       autocomplete="new-password" data-match="#new_password"
+                                       placeholder="Re-enter your new password" required>
+                                <button type="button" class="btn fi-pass-toggle"
+                                        data-toggle-password="#confirm_password"
+                                        aria-label="Show or hide confirm password">Show</button>
+                                <div class="invalid-feedback">The passwords must match.</div>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="mb-4">
-                        <label for="confirm_password" class="form-label">Confirm new password</label>
-                        <div class="input-group has-validation">
-                            <input type="password" class="form-control" id="confirm_password"
-                                   name="confirm_password" minlength="8" maxlength="72"
-                                   autocomplete="new-password" data-match="#new_password"
-                                   placeholder="Re-enter your new password" required>
-                            <button type="button" class="btn fi-pass-toggle"
-                                    data-toggle-password="#confirm_password"
-                                    aria-label="Show or hide confirm password">Show</button>
-                            <div class="invalid-feedback">The passwords must match.</div>
+                    <div class="fi-strength mb-4" id="passwordStrength" data-strength="#new_password" data-level="0">
+                        <div class="fi-strength-head">
+                            <span>Password strength</span>
+                            <span class="fi-strength-label" data-strength-label aria-live="polite">Not entered</span>
                         </div>
+                        <div class="fi-strength-bars" aria-hidden="true">
+                            <span class="fi-strength-bar"></span><span class="fi-strength-bar"></span>
+                            <span class="fi-strength-bar"></span><span class="fi-strength-bar"></span>
+                        </div>
+                        <p class="fi-strength-hint" data-strength-hint>Use 12 or more characters with upper and lower case letters, numbers and symbols.</p>
                     </div>
 
                     <button type="submit" class="btn btn-primary"
@@ -296,6 +398,29 @@ fiPublicNav($sessionUser, 'profile');
             </section>
 
             <?php endif; ?>
+        </div>
+    </div>
+
+    <?php // Crop dialog: opens after a photo is chosen so it can be moved and zoomed first. ?>
+    <div class="fi-lightbox fi-cropper" id="fiCropper" role="dialog" aria-modal="true"
+         aria-labelledby="cropTitle" hidden>
+        <div class="fi-lightbox-backdrop" data-crop-cancel></div>
+        <div class="fi-crop-card">
+            <h2 class="fi-crop-title" id="cropTitle">Adjust your photo</h2>
+            <p class="fi-crop-help">Drag the photo to move it. Use the slider or the mouse wheel to zoom.</p>
+            <div class="fi-crop-viewport" data-crop-viewport tabindex="0"
+                 aria-label="Photo position. Use the arrow keys to move and plus or minus to zoom.">
+                <img alt="" draggable="false" data-crop-image>
+                <span class="fi-crop-mask" aria-hidden="true"></span>
+            </div>
+            <label class="fi-crop-zoom">
+                <span>Zoom</span>
+                <input type="range" min="1" max="4" step="0.01" value="1" data-crop-zoom aria-label="Zoom">
+            </label>
+            <div class="fi-crop-actions">
+                <button type="button" class="btn btn-outline-secondary" data-crop-cancel>Cancel</button>
+                <button type="button" class="btn btn-primary" data-crop-apply>Use this photo</button>
+            </div>
         </div>
     </div>
 

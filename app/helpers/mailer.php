@@ -7,6 +7,58 @@
  */
 function sendResetPasswordEmail(string $toEmail, string $toName, string $resetUrl): bool
 {
+    $safeName = trim(preg_replace('/[\r\n]+/', ' ', $toName) ?? '');
+    $subject = 'Reset your FindIT password';
+    $escapedName = htmlspecialchars($safeName !== '' ? $safeName : 'Student', ENT_QUOTES, 'UTF-8');
+    $escapedUrl = htmlspecialchars($resetUrl, ENT_QUOTES, 'UTF-8');
+
+    $textBody = "Hi " . ($safeName !== '' ? $safeName : 'Student') . ",\r\n\r\n"
+        . "We received a request to reset your FindIT account password.\r\n"
+        . "Open the link below to set a new password (valid for 30 minutes):\r\n\r\n"
+        . $resetUrl . "\r\n\r\n"
+        . "If you did not request this, you can safely ignore this email.\r\n";
+
+    $htmlBody = "<!DOCTYPE html><html><body style=\"font-family:Arial,sans-serif;color:#1f2937;line-height:1.6;\">"
+        . "<p>Hi {$escapedName},</p>"
+        . "<p>We received a request to reset your <strong>FindIT</strong> account password.</p>"
+        . "<p><a href=\"{$escapedUrl}\" style=\"display:inline-block;padding:10px 18px;background:#0d6efd;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;\">Reset Password</a></p>"
+        . "<p>Or copy and paste this link into your browser (valid for 30 minutes):<br><a href=\"{$escapedUrl}\">{$escapedUrl}</a></p>"
+        . "<p style=\"color:#6b7280;font-size:13px;\">If you did not request a password reset, you can safely ignore this email.</p>"
+        . "</body></html>";
+
+
+    return sendMail($toEmail, $toName, $subject, $textBody, $htmlBody);
+}
+
+/** Verification link for the campus email (sent when the student presses "Send verification email"). */
+function sendVerificationEmail(string $toEmail, string $toName, string $verifyUrl): bool
+{
+    $safeName = trim(preg_replace('/[\r\n]+/', ' ', $toName) ?? '');
+    $subject = 'Verify your FindIT campus email';
+    $escapedName = htmlspecialchars($safeName !== '' ? $safeName : 'Student', ENT_QUOTES, 'UTF-8');
+    $escapedUrl = htmlspecialchars($verifyUrl, ENT_QUOTES, 'UTF-8');
+
+    $textBody = "Hi " . ($safeName !== '' ? $safeName : 'Student') . ",\r\n\r\n"
+        . "Please confirm that this campus email belongs to you.\r\n"
+        . "Open the link below to verify your FindIT account (valid for 60 minutes):\r\n\r\n"
+        . $verifyUrl . "\r\n\r\n"
+        . "After that you can report found items and claim items.\r\n"
+        . "If you did not request this, you can safely ignore this email.\r\n";
+
+    $htmlBody = "<!DOCTYPE html><html><body style=\"font-family:Arial,sans-serif;color:#1f2937;line-height:1.6;\">"
+        . "<p>Hi {$escapedName},</p>"
+        . "<p>Please confirm that this campus email belongs to you, so your <strong>FindIT</strong> account can be verified.</p>"
+        . "<p><a href=\"{$escapedUrl}\" style=\"display:inline-block;padding:10px 18px;background:#0f3d2e;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;\">Verify my email</a></p>"
+        . "<p>Or copy and paste this link into your browser (valid for 60 minutes):<br><a href=\"{$escapedUrl}\">{$escapedUrl}</a></p>"
+        . "<p style=\"color:#6b7280;font-size:13px;\">After that you can report found items and claim items. If you did not request this, you can safely ignore this email.</p>"
+        . "</body></html>";
+
+    return sendMail($toEmail, $toName, $subject, $textBody, $htmlBody);
+}
+
+/** Sends one email through the SMTP settings in .env. Returns false (and logs) on any failure. */
+function sendMail(string $toEmail, string $toName, string $subject, string $textBody, string $htmlBody): bool
+{
     $host = defined('MAIL_HOST') ? MAIL_HOST : '127.0.0.1';
     $port = defined('MAIL_PORT') ? (int) MAIL_PORT : 1025;
     $username = defined('MAIL_USERNAME') ? MAIL_USERNAME : '';
@@ -36,24 +88,6 @@ function sendResetPasswordEmail(string $toEmail, string $toName, string $resetUr
     if ($safeTo === '' || !filter_var($safeTo, FILTER_VALIDATE_EMAIL)) {
         return false;
     }
-
-    $subject = 'Reset your FindIT password';
-    $escapedName = htmlspecialchars($safeName !== '' ? $safeName : 'Student', ENT_QUOTES, 'UTF-8');
-    $escapedUrl = htmlspecialchars($resetUrl, ENT_QUOTES, 'UTF-8');
-
-    $textBody = "Hi " . ($safeName !== '' ? $safeName : 'Student') . ",\r\n\r\n"
-        . "We received a request to reset your FindIT account password.\r\n"
-        . "Open the link below to set a new password (valid for 30 minutes):\r\n\r\n"
-        . $resetUrl . "\r\n\r\n"
-        . "If you did not request this, you can safely ignore this email.\r\n";
-
-    $htmlBody = "<!DOCTYPE html><html><body style=\"font-family:Arial,sans-serif;color:#1f2937;line-height:1.6;\">"
-        . "<p>Hi {$escapedName},</p>"
-        . "<p>We received a request to reset your <strong>FindIT</strong> account password.</p>"
-        . "<p><a href=\"{$escapedUrl}\" style=\"display:inline-block;padding:10px 18px;background:#0d6efd;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;\">Reset Password</a></p>"
-        . "<p>Or copy and paste this link into your browser (valid for 30 minutes):<br><a href=\"{$escapedUrl}\">{$escapedUrl}</a></p>"
-        . "<p style=\"color:#6b7280;font-size:13px;\">If you did not request a password reset, you can safely ignore this email.</p>"
-        . "</body></html>";
 
     $boundary = 'findit_' . bin2hex(random_bytes(12));
     $headers = [

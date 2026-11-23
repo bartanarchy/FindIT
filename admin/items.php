@@ -44,7 +44,8 @@ try {
 
     $stmt = $pdo->query($sql);
     $items = Crypto::decryptRows($stmt->fetchAll());
-
+    // Prepare item photos for browser display.
+    unset($item);
     // build the category filter from categories actually in use.
     foreach ($items as $item) {
         $categoryName = $item['name_category'] ?? '';
@@ -272,63 +273,64 @@ fiAdminNav('items');
 <?php fiFooter('Built for the IT student community.'); ?>
 <?php fiScripts('../public/assets'); ?>
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const searchInput = document.getElementById('item-search');
-    const categoryFilter = document.getElementById('category-filter');
-    const statusFilter = document.getElementById('status-filter');
-    const resetButton = document.getElementById('reset-filters');
-    const visibleCount = document.getElementById('visible-count');
-    const noResultsRow = document.getElementById('no-filter-results');
-    const itemRows = Array.from(
-        document.querySelectorAll('#items-table-body tr[data-search]')
-    );
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('item-search');
+        const categoryFilter = document.getElementById('category-filter');
+        const statusFilter = document.getElementById('status-filter');
+        const resetButton = document.getElementById('reset-filters');
+        const visibleCount = document.getElementById('visible-count');
+        const noResultsRow = document.getElementById('no-filter-results');
+        const itemRows = Array.from(
+            document.querySelectorAll('#items-table-body tr[data-search]')
+        );
 
-    if (!searchInput || !categoryFilter || !statusFilter || !visibleCount) {
-        return;
-    }
-
-    function filterItems() {
-        const searchTerm = searchInput.value.trim().toLowerCase();
-        const selectedCategory = categoryFilter.value.toLowerCase();
-        const selectedStatus = statusFilter.value.toLowerCase();
-        let visibleItems = 0;
-
-        itemRows.forEach(function (row) {
-            const searchableText = row.dataset.search || '';
-            const category = (row.dataset.category || '').toLowerCase();
-            const status = (row.dataset.status || '').toLowerCase();
-
-            const matchesSearch = searchableText.includes(searchTerm);
-            const matchesCategory = selectedCategory === '' || category === selectedCategory;
-            const matchesStatus = selectedStatus === '' || status === selectedStatus;
-            const shouldShow = matchesSearch && matchesCategory && matchesStatus;
-
-            row.hidden = !shouldShow;
-
-            if (shouldShow) {
-                visibleItems++;
-            }
-        });
-
-        visibleCount.textContent = visibleItems;
-
-        if (noResultsRow) {
-            noResultsRow.hidden = visibleItems !== 0;
+        if (!searchInput || !categoryFilter || !statusFilter || !visibleCount) {
+            return;
         }
-    }
 
-    searchInput.addEventListener('input', filterItems);
-    categoryFilter.addEventListener('change', filterItems);
-    statusFilter.addEventListener('change', filterItems);
+        function filterItems() {
+            const searchTerm = searchInput.value.trim().toLowerCase();
+            const selectedCategory = categoryFilter.value.toLowerCase();
+            const selectedStatus = statusFilter.value.toLowerCase();
+            let visibleItems = 0;
 
-    resetButton.addEventListener('click', function () {
-        searchInput.value = '';
-        categoryFilter.value = '';
-        statusFilter.value = '';
-        filterItems();
-        searchInput.focus();
+            itemRows.forEach(function(row) {
+                const searchableText = row.dataset.search || '';
+                const category = (row.dataset.category || '').toLowerCase();
+                const status = (row.dataset.status || '').toLowerCase();
+
+                const matchesSearch = searchableText.includes(searchTerm);
+                const matchesCategory = selectedCategory === '' || category === selectedCategory;
+                const matchesStatus = selectedStatus === '' || status === selectedStatus;
+                const shouldShow = matchesSearch && matchesCategory && matchesStatus;
+
+                row.hidden = !shouldShow;
+
+                if (shouldShow) {
+                    visibleItems++;
+                }
+            });
+
+            visibleCount.textContent = visibleItems;
+
+            if (noResultsRow) {
+                noResultsRow.hidden = visibleItems !== 0;
+            }
+        }
+
+        searchInput.addEventListener('input', filterItems);
+        categoryFilter.addEventListener('change', filterItems);
+        statusFilter.addEventListener('change', filterItems);
+
+        resetButton.addEventListener('click', function() {
+            searchInput.value = '';
+            categoryFilter.value = '';
+            statusFilter.value = '';
+            filterItems();
+            searchInput.focus();
+        });
     });
-});
 </script>
 </body>
+
 </html>

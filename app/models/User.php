@@ -132,7 +132,7 @@ class User
     {
         // Used by the profile page. Personal columns are decrypted before they are returned.
         $stmt = $this->pdo->prepare(
-            'SELECT id_user, email_kampus, name_user, id_nim, password_user
+            'SELECT id_user, email_kampus, name_user, id_nim, password_user, email_verified_at
              FROM public."User"
              WHERE id_user = :id_user AND role_user = \'student\'
              LIMIT 1'

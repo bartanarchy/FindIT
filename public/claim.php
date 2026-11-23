@@ -3,10 +3,14 @@
 require_once dirname(__DIR__) . '/config/config.php';
 require_once dirname(__DIR__) . '/app/helpers/auth.php';
 require_once dirname(__DIR__) . '/app/helpers/csrf.php';
+require_once dirname(__DIR__) . '/app/helpers/verification.php';
 require_once dirname(__DIR__) . '/app/helpers/notifications.php';
 
 // Only logged-in students can submit a claim.
 requireRole('student');
+
+// Reporting and claiming need a verified campus email (see profile.php).
+requireVerifiedStudent($pdo);
 
 /**
  * Escape output before displaying it in HTML.

@@ -27,10 +27,46 @@ function currentUser(): ?array
     return isLoggedIn() ? $_SESSION['user'] : null;
 }
 
+function isRecoverySession(): bool
+{
+    // The emergency admin (see recovery.php) is not a database account.
+    return !empty($_SESSION['user']['recovery']);
+}
+
+function recoverySessionFresh(): bool
+{
+    $started = (int) ($_SESSION['user']['recovery_started'] ?? 0);
+
+    return $started > 0 && (time() - $started) <= 1800;
+}
+
+function recoverySessionAllowed(): bool
+{
+    // An emergency session may only open Backup Management, and only for 30 minutes.
+    $script = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+
+    return substr($script, -strlen('/admin/backups.php')) === '/admin/backups.php'
+        && recoverySessionFresh();
+}
+
 function requireLogin(): void
 {
     // A visitor without a valid login needs to sign in first.
     if (!isLoggedIn()) {
+        header('Location: ' . appBasePath() . '/public/login.php');
+        exit;
+    }
+
+    // Emergency sessions must not reach anything else, for example after the database is back.
+    if (isRecoverySession() && !recoverySessionAllowed()) {
+        // Still valid: send it back to the only page it may use. Expired: end the session.
+        if (recoverySessionFresh()) {
+            header('Location: ' . appBasePath() . '/admin/backups.php#restore');
+            exit;
+        }
+
+        $_SESSION = [];
+        session_destroy();
         header('Location: ' . appBasePath() . '/public/login.php');
         exit;
     }

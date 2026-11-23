@@ -10,6 +10,8 @@ redirectLoggedInUser();
 $authController = new AuthController();
 $errorMessage = '';
 $email = '';
+// Shown after a successful database restore (see admin/backups.php).
+$restoredNotice = ($_GET['restored'] ?? '') === '1';
 
 // Handle the login form when it gets submitted.
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -55,6 +57,10 @@ fiPublicNav(null, 'login');
             <a href="index.php" class="fi-brand">FindIT<span>.</span></a>
             <p>Welcome back! Sign in to your account.</p>
         </div>
+
+        <?php if ($restoredNotice && $errorMessage === ''): ?>
+            <?php fiAlert('success', 'The database was restored. Please sign in again.'); ?>
+        <?php endif; ?>
 
         <?php if ($errorMessage !== ''): ?>
             <?php fiAlert('danger', $errorMessage); ?>

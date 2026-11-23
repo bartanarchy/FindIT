@@ -44,7 +44,8 @@ try {
             detail_lokasi,
             tanggal_ditemukan,
             ciri_umum,
-            ciri_khusus
+            ciri_khusus,
+            REPLACE(ENCODE(photo_url, \'base64\'), CHR(10), \'\') AS photo_base64
          FROM public.item
          WHERE kode_laporan = :item_id
          LIMIT 1'
@@ -53,6 +54,28 @@ try {
     $itemStmt->execute(['item_id' => $itemId]);
     $item = $itemStmt->fetch();
     $item = $item ? Crypto::decryptRow($item) : $item;
+    if ($item) {
+        $item['photo_src'] = null;
+
+        $photoBase64 = $item['photo_base64'] ?? '';
+
+        if (is_string($photoBase64) && $photoBase64 !== '') {
+            $photoData = base64_decode($photoBase64, true);
+
+            if ($photoData !== false) {
+                $fileInfo = new finfo(FILEINFO_MIME_TYPE);
+                $mimeType = $fileInfo->buffer($photoData);
+
+                $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+                if (in_array($mimeType, $allowedTypes, true)) {
+                    $item['photo_src'] = 'data:' . $mimeType . ';base64,' . base64_encode($photoData);
+                }
+            }
+        }
+
+        unset($item['photo_base64']);
+    }
 
     if (!$item) {
         http_response_code(404);
@@ -79,6 +102,49 @@ try {
             $dateFound = trim((string) ($_POST['tanggal_ditemukan'] ?? ''));
             $generalFeatures = trim((string) ($_POST['ciri_umum'] ?? ''));
             $distinctiveFeatures = trim((string) ($_POST['ciri_khusus'] ?? ''));
+            // Validate an optional replacement photo.
+            $photoData = null;
+            $uploadedPhoto = $_FILES['photo'] ?? null;
+
+            if (is_array($uploadedPhoto)) {
+                $uploadError = $uploadedPhoto['error'] ?? UPLOAD_ERR_NO_FILE;
+
+                if ($uploadError !== UPLOAD_ERR_NO_FILE) {
+                    if ($uploadError !== UPLOAD_ERR_OK) {
+                        $errorMessage = 'The photo upload failed. Please try again.';
+                    } elseif (($uploadedPhoto['size'] ?? 0) > 5 * 1024 * 1024) {
+                        $errorMessage = 'The photo must not exceed 5 MB.';
+                    } else {
+                        $temporaryPath = $uploadedPhoto['tmp_name'] ?? '';
+
+                        if (
+                            !is_string($temporaryPath) ||
+                            !is_uploaded_file($temporaryPath)
+                        ) {
+                            $errorMessage = 'Invalid photo upload.';
+                        } else {
+                            $fileInfo = new finfo(FILEINFO_MIME_TYPE);
+                            $mimeType = $fileInfo->file($temporaryPath);
+
+                            $allowedTypes = [
+                                'image/jpeg',
+                                'image/png',
+                                'image/webp'
+                            ];
+
+                            if (!in_array($mimeType, $allowedTypes, true)) {
+                                $errorMessage = 'Only JPG, PNG, and WEBP photos are allowed.';
+                            } else {
+                                $photoData = file_get_contents($temporaryPath);
+
+                                if ($photoData === false) {
+                                    $errorMessage = 'Unable to read the uploaded photo.';
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
             // Keep the submitted values visible if validation fails.
             $item['nama_barang'] = $name;
@@ -89,7 +155,9 @@ try {
             $item['ciri_khusus'] = $distinctiveFeatures;
 
             // Validate the form before updating the database.
-            if ($name === '' || mb_strlen($name) > 100) {
+            if ($errorMessage !== '') {
+                // Keep the existing upload error message.
+            } elseif ($name === '' || mb_strlen($name) > 100) {
                 $errorMessage =
                     'The item name is required and must not exceed 100 characters.';
             } elseif (!$categoryId || $categoryId < 1) {
@@ -131,7 +199,8 @@ try {
                             detail_lokasi = :location,
                             tanggal_ditemukan = :date_found,
                             ciri_umum = :general_features,
-                            ciri_khusus = :distinctive_features
+                            ciri_khusus = :distinctive_features,
+                            photo_url = COALESCE(:photo_data, photo_url)
                          WHERE kode_laporan = :item_id'
                     );
 
@@ -147,7 +216,10 @@ try {
                         'distinctive_features' => $distinctiveFeatures !== ''
                             ? Crypto::protect('ciri_khusus', $distinctiveFeatures)
                             : null,
-                        'item_id' => $itemId
+                        'item_id' => $itemId,
+                        'photo_data' => $photoData === null
+                            ? null
+                            : '\\x' . bin2hex($photoData)
                     ]);
 
                     // Return to the inventory after saving.
@@ -197,6 +269,7 @@ fiAdminNav('items');
                 method="POST"
                 action="edit-item.php?id=<?= (int) $itemId ?>"
                 class="fi-form-card needs-validation"
+                enctype="multipart/form-data"
                 novalidate>
                 <input
                     type="hidden"
@@ -208,7 +281,37 @@ fiAdminNav('items');
                     <p class="fi-form-section-hint">
                         This information is shown publicly on the item listing.
                     </p>
-
+                    <?php if (!empty($item['photo_src'])): ?>
+                        <div class="fi-edit-item-photo">
+                            <img
+                                src="<?= escapeEditItemHtml($item['photo_src']) ?>"
+                                alt="Reported item photo"
+                                style="width: 100%; max-width: 320px; height: 240px; object-fit: cover; border-radius: 20px;">
+                        </div>
+                    <?php else: ?>
+                        <p class="text-muted small">No photo was uploaded for this item.</p>
+                    <?php endif; ?>
+                    <div class="mt-3">
+                        <label for="photo" class="form-label">Replace photo</label>
+                        <input
+                            type="file"
+                            class="form-control"
+                            id="photo"
+                            name="photo"
+                            accept="image/jpeg,image/png,image/webp">
+                        <div class="form-text">
+                            Upload a new JPG, PNG, or WEBP image. Maximum file size: 5 MB.
+                            Leave empty to keep the current photo.
+                        </div>
+                    </div>
+                    <div id="photo-preview-container" class="mt-3" hidden>
+                        <p class="form-label">New photo preview</p>
+                        <img
+                            id="photo-preview"
+                            src=""
+                            alt="New photo preview"
+                            style="width: 100%; max-width: 320px; height: 240px; object-fit: cover; border-radius: 20px;">
+                    </div>
                     <div class="row g-3">
                         <div class="col-12 col-md-7">
                             <label for="nama_barang" class="form-label">
@@ -318,4 +421,5 @@ fiAdminNav('items');
 <?php fiFooter(); ?>
 <?php fiScripts('../public/assets'); ?>
 </body>
+
 </html>
