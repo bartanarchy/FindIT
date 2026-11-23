@@ -842,7 +842,7 @@
 
     // check if the email is a campus email, and if so, extract the NIM (student ID) from it.
     document.addEventListener('DOMContentLoaded', function () {
-        // File ini dimuat di semua halaman, jadi hanya jalan kalau form register ada.
+        // This file is loaded on every page, so only run when the register form exists.
         var form = document.querySelector('form[action="register.php"]');
         if (!form) {
             return;
@@ -850,6 +850,9 @@
 
         var email = form.querySelector('#email');
         var studentId = form.querySelector('#student_id');
+        if (!email || !studentId) {
+            return;
+        }
         var feedback = studentId.parentElement.querySelector('.invalid-feedback');
 
         function nimFromEmail() {
@@ -885,7 +888,7 @@
         }
 
         email.addEventListener('input', onEmailChange);
-        email.addEventListener('change', onEmailChange); 
+        email.addEventListener('change', onEmailChange);
 
         studentId.addEventListener('input', function () {
             studentId.value = studentId.value.replace(/[^0-9]/g, '');
@@ -899,20 +902,248 @@
 
 })();
 
-/* Profile page: preview the chosen photo before it is uploaded. */
+/* Profile page: choose a photo, then move and zoom it inside a round frame before uploading.
+ The cropped square (512 x 512 JPEG) replaces the chosen file, so the server still receives a
+   normal upload and checks it as before. Browsers without canvas or DataTransfer support keep  
+   the old behaviour: the whole photo is uploaded and the server crops the centre. */
 (function () {
     'use strict';
 
     document.addEventListener('DOMContentLoaded', function () {
         var input = document.querySelector('[data-photo-input]');
         var box = document.querySelector('[data-photo-preview]');
+        var dialog = document.getElementById('fiCropper');
+        var adjustBtn = document.querySelector('[data-photo-adjust]');
         if (!input || !box || !window.URL || !URL.createObjectURL) {
             return;
         }
 
-        var maxBytes = 2 * 1024 * 1024;
+        var maxPickBytes = 10 * 1024 * 1024;   // photos straight from a phone camera are big
+        var maxUploadBytes = 2 * 1024 * 1024;  // what the server accepts
         var allowed = ['image/jpeg', 'image/png', 'image/webp'];
-        var objectUrl = null;
+        var OUTPUT = 512;
+        var previewUrl = null;
+        var originalFile = null;               // the photo the person picked (uncropped)
+        var committed = null;                  // the last cropped file placed in the input
+        var committedSource = null;            // the original photo that `committed` came from
+        var canCrop = !!(dialog && window.DataTransfer && HTMLCanvasElement.prototype.toBlob);
+
+        function showPreview(file) {
+            if (previewUrl) {
+                URL.revokeObjectURL(previewUrl);
+            }
+            previewUrl = URL.createObjectURL(file);
+
+            var face = box.querySelector('[data-fi-avatar]');
+            if (face) {
+                face.innerHTML = '';
+                var img = document.createElement('img');
+                img.src = previewUrl;
+                img.alt = '';
+                face.appendChild(img);
+            }
+        }
+
+        function reject(message) {
+            input.setCustomValidity(message);
+            input.reportValidity();
+            input.value = '';
+            originalFile = null;
+            committed = null;
+            committedSource = null;
+            if (adjustBtn) {
+                adjustBtn.classList.add('d-none');
+            }
+        }
+
+        /* ---------- crop dialog ---------- */
+        var viewport, image, zoom, state, dragging, objectUrl;
+
+        if (canCrop) {
+            viewport = dialog.querySelector('[data-crop-viewport]');
+            image = dialog.querySelector('[data-crop-image]');
+            zoom = dialog.querySelector('[data-crop-zoom]');
+            state = { nw: 0, nh: 0, size: 0, base: 1, z: 1, ox: 0, oy: 0 };
+            dragging = null;
+            objectUrl = null;
+        }
+
+        function clampAndRender() {
+            var scale = state.base * state.z;
+            var maxX = Math.max(0, (state.nw * scale - state.size) / 2);
+            var maxY = Math.max(0, (state.nh * scale - state.size) / 2);
+            state.ox = Math.min(maxX, Math.max(-maxX, state.ox));
+            state.oy = Math.min(maxY, Math.max(-maxY, state.oy));
+
+            var w = state.nw * scale;
+            var h = state.nh * scale;
+            image.style.width = w + 'px';
+            image.style.height = h + 'px';
+            image.style.left = (state.size / 2 + state.ox - w / 2) + 'px';
+            image.style.top = (state.size / 2 + state.oy - h / 2) + 'px';
+        }
+
+        function setZoom(value) {
+            state.z = Math.min(4, Math.max(1, value));
+            zoom.value = String(state.z);
+            clampAndRender();
+        }
+
+        function openCropper(file) {
+            if (objectUrl) {
+                URL.revokeObjectURL(objectUrl);
+            }
+            objectUrl = URL.createObjectURL(file);
+
+            image.onload = function () {
+                dialog.hidden = false;
+                document.body.style.overflow = 'hidden';
+
+                state.size = viewport.clientWidth;
+                state.nw = image.naturalWidth;
+                state.nh = image.naturalHeight;
+                // "Cover" the square: the shorter side exactly fills it at zoom 1.
+                state.base = Math.max(state.size / state.nw, state.size / state.nh);
+                state.ox = 0;
+                state.oy = 0;
+                setZoom(1);
+                viewport.focus();
+            };
+            image.onerror = function () {
+                reject('This file could not be read as an image.');
+            };
+            image.src = objectUrl;
+        }
+
+        function closeCropper() {
+            dialog.hidden = true;
+            document.body.style.overflow = '';
+            if (objectUrl) {
+                URL.revokeObjectURL(objectUrl);
+                objectUrl = null;
+            }
+            input.focus();
+        }
+
+        function cancelCrop() {
+            if (committed) {
+                // Go back to the last cropped photo, so a big uncropped file is never uploaded.
+                var back = new DataTransfer();
+                back.items.add(committed);
+                input.files = back.files;
+                originalFile = committedSource;
+            } else {
+                // Nothing was ever applied: clear the choice completely.
+                input.value = '';
+                originalFile = null;
+                if (adjustBtn) {
+                    adjustBtn.classList.add('d-none');
+                }
+            }
+            input.setCustomValidity('');
+            closeCropper();
+        }
+
+        function applyCrop() {
+            var scale = state.base * state.z;
+            var left = state.size / 2 + state.ox - (state.nw * scale) / 2;
+            var top = state.size / 2 + state.oy - (state.nh * scale) / 2;
+            var sx = -left / scale;
+            var sy = -top / scale;
+            var side = state.size / scale;
+
+            var canvas = document.createElement('canvas');
+            canvas.width = OUTPUT;
+            canvas.height = OUTPUT;
+            var ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff';            // PNG transparency becomes white
+            ctx.fillRect(0, 0, OUTPUT, OUTPUT);
+            ctx.drawImage(image, sx, sy, side, side, 0, 0, OUTPUT, OUTPUT);
+
+            canvas.toBlob(function (blob) {
+                if (!blob || blob.size > maxUploadBytes) {
+                    closeCropper();
+                    reject('The photo could not be prepared. Please try another photo.');
+                    return;
+                }
+                var cropped = new File([blob], 'profile.jpg', { type: 'image/jpeg' });
+                var transfer = new DataTransfer();
+                transfer.items.add(cropped);
+                input.files = transfer.files;
+                input.setCustomValidity('');
+
+                committed = cropped;
+                committedSource = originalFile;
+
+                showPreview(cropped);
+                if (adjustBtn) {
+                    adjustBtn.classList.remove('d-none');
+                }
+                closeCropper();
+            }, 'image/jpeg', 0.9);
+        }
+
+        if (canCrop) {
+            viewport.addEventListener('pointerdown', function (event) {
+                dragging = { x: event.clientX, y: event.clientY };
+                viewport.setPointerCapture(event.pointerId);
+                event.preventDefault();
+            });
+            viewport.addEventListener('pointermove', function (event) {
+                if (!dragging) {
+                    return;
+                }
+                state.ox += event.clientX - dragging.x;
+                state.oy += event.clientY - dragging.y;
+                dragging = { x: event.clientX, y: event.clientY };
+                clampAndRender();
+            });
+            ['pointerup', 'pointercancel'].forEach(function (name) {
+                viewport.addEventListener(name, function () {
+                    dragging = null;
+                });
+            });
+            viewport.addEventListener('wheel', function (event) {
+                event.preventDefault();
+                setZoom(state.z + (event.deltaY < 0 ? 0.1 : -0.1));
+            }, { passive: false });
+            viewport.addEventListener('keydown', function (event) {
+                var step = 10;
+                var handled = true;
+                if (event.key === 'ArrowLeft') { state.ox += step; }
+                else if (event.key === 'ArrowRight') { state.ox -= step; }
+                else if (event.key === 'ArrowUp') { state.oy += step; }
+                else if (event.key === 'ArrowDown') { state.oy -= step; }
+                else if (event.key === '+' || event.key === '=') { setZoom(state.z + 0.1); }
+                else if (event.key === '-') { setZoom(state.z - 0.1); }
+                else { handled = false; }
+                if (handled) {
+                    event.preventDefault();
+                    clampAndRender();
+                }
+            });
+            zoom.addEventListener('input', function () {
+                setZoom(parseFloat(zoom.value));
+            });
+
+            dialog.querySelectorAll('[data-crop-cancel]').forEach(function (el) {
+                el.addEventListener('click', cancelCrop);
+            });
+            dialog.querySelector('[data-crop-apply]').addEventListener('click', applyCrop);
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape' && !dialog.hidden) {
+                    cancelCrop();
+                }
+            });
+        }
+
+        if (adjustBtn) {
+            adjustBtn.addEventListener('click', function () {
+                if (canCrop && originalFile) {
+                    openCropper(originalFile);
+                }
+            });
+        }
 
         input.addEventListener('change', function () {
             var file = input.files && input.files[0];
@@ -922,31 +1153,76 @@
                 return;
             }
             if (allowed.indexOf(file.type) === -1) {
-                input.setCustomValidity('Only JPG, PNG or WebP photos are allowed.');
-                input.reportValidity();
-                input.value = '';
-                return;
-            }
-            if (file.size > maxBytes) {
-                input.setCustomValidity('The photo is too large. The maximum size is 2 MB.');
-                input.reportValidity();
-                input.value = '';
+                reject('Only JPG, PNG or WebP photos are allowed.');
                 return;
             }
 
-            if (objectUrl) {
-                URL.revokeObjectURL(objectUrl);
+            if (!canCrop) {
+                if (file.size > maxUploadBytes) {
+                    reject('The photo is too large. The maximum size is 2 MB.');
+                    return;
+                }
+                showPreview(file);
+                return;
             }
-            objectUrl = URL.createObjectURL(file);
 
-            var face = box.querySelector('[data-fi-avatar]');
-            if (face) {
-                face.innerHTML = '';
-                var img = document.createElement('img');
-                img.src = objectUrl;
-                img.alt = '';
-                face.appendChild(img);
+            if (file.size > maxPickBytes) {
+                reject('The photo is too large. Please choose one under 10 MB.');
+                return;
             }
+            originalFile = file;
+            openCropper(file);
+        });
+    });
+})();
+
+/* Password strength meter: <div data-strength="#password-input"> with 4 bars and a label.
+   The server only requires 8 characters; the meter just helps people choose a better one. */
+(function () {
+    'use strict';
+
+    var LEVELS = [
+        { label: 'Not entered', hint: 'Use 12 or more characters with upper and lower case letters, numbers and symbols.' },
+        { label: 'Weak', hint: 'Add more characters, and mix letters, numbers and symbols.' },
+        { label: 'Fair', hint: 'Getting better. Try 12 or more characters or add a symbol.' },
+        { label: 'Good', hint: 'Good. A few more characters or a symbol would make it strong.' },
+        { label: 'Strong', hint: 'Strong password.' }
+    ];
+
+    function rate(value) {
+        if (!value) {
+            return 0;
+        }
+        if (value.length < 8) {
+            return 1;
+        }
+        var points = 0;
+        if (value.length >= 12) { points++; }
+        if (/[a-z]/.test(value) && /[A-Z]/.test(value)) { points++; }
+        if (/\d/.test(value)) { points++; }
+        if (/[^A-Za-z0-9]/.test(value)) { points++; }
+        // 8+ characters starts at Weak; each extra point raises the level (3 points = Strong).
+        return Math.min(4, 1 + points);
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('[data-strength]').forEach(function (box) {
+            var input = document.querySelector(box.getAttribute('data-strength'));
+            var label = box.querySelector('[data-strength-label]');
+            var hint = box.querySelector('[data-strength-hint]');
+            if (!input) {
+                return;
+            }
+
+            function update() {
+                var level = rate(input.value);
+                box.setAttribute('data-level', String(level));
+                if (label) { label.textContent = LEVELS[level].label; }
+                if (hint) { hint.textContent = LEVELS[level].hint; }
+            }
+
+            input.addEventListener('input', update);
+            update();
         });
     });
 })();
@@ -1014,7 +1290,7 @@
     if (alertEl) {
         alertEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-})
+})();
 
 /* Found item photo preview */
 (function () {
@@ -1076,6 +1352,8 @@
         });
     });
 })();
+
+
 
 // Admin edit item: preview a replacement photo before uploading.
 (function () {
