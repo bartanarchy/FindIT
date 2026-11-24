@@ -8,15 +8,16 @@ The platform centralizes information that used to be scattered across chat group
 
 ### Students
 
-* Register with a campus email (`NIM@student.polinema.ac.id`). The 12-digit NIM must match the Student ID, and a captcha protects the form.
-* Sign in, sign out, and reset a forgotten password through an email link (valid for 30 minutes, single use).
+* Register with a campus email (`NIM@student.polinema.ac.id`). The 12-digit NIM must match the Student ID (it is filled in automatically from the email), and a captcha protects the form.
+* Verify the campus email with a one-time link sent by email. Only verified students can report found items or submit claims; an unverified student is sent straight to the verification step on the profile page.
+* Sign in, sign out, and reset a forgotten password through an email link (valid for 30 minutes, single use). The forgot-password form is protected by a captcha.
 * Browse, search, and filter the found items on the homepage.
 * Open an item to see its details. The item's secret characteristic is never shown publicly.
-* Report a found item.
+* Report a found item, with an optional photo. After choosing a photo it can be moved and zoomed inside a 4:3 frame (crop) before it is sent. After submitting, the student returns to the homepage with a confirmation message.
 * Claim an item by describing it (where it was lost, where it was last seen, and its specific characteristics).
-* Follow claims in **My claims**. An approved claim shows a pickup code and the pickup location.
+* Follow claims in **My claims**. An approved claim shows a pickup code (as a QR code) and the pickup location.
 * Receive notifications through a bell icon that updates automatically.
-* Manage a profile: upload a photo (JPG, PNG, or WebP, up to 2 MB) or choose one of 8 built-in avatars, and change the password.
+* Manage a profile: upload a photo (JPG, PNG, or WebP, up to 2 MB) or choose one of 8 built-in avatars, change the password (the form warns right away when the two password fields do not match), and send the verification email.
 
 ### Administrators
 
@@ -26,15 +27,17 @@ The platform centralizes information that used to be scattered across chat group
 * View registered users.
 * Create and restore database backups from the admin panel.
 * Receive live alerts for new activity.
+* Sign in as an emergency administrator when the database is down, to reach Backup Management and restore it (see *Emergency Administrator* below).
 
 ### Security and reliability
 
 * Prepared statements for every query, CSRF tokens on every form, and escaped output.
 * Passwords are hashed with `password_hash()`.
 * Sensitive columns (names, emails, phone numbers, NIM, item details, claim answers, notes, notification text, and profile photos) are encrypted with AES-256-GCM. Lookups by email and NIM use blind indexes.
-* Password reset tokens are stored only as hashes.
-* Folders that must stay private (`app`, `config`, `database`, `scripts`) and files such as `.env` are blocked from direct web access with `.htaccess`.
+* Password reset and email verification tokens are stored only as hashes, are single use, and expire.
+* Folders that must stay private (`app`, `config`, `database`, `scripts`) are blocked from direct web access with `.htaccess`, and the root `.htaccess` blocks dotfiles such as `.env` and `.git`.
 * Automatic and manual backups with restore tests, and a maintenance page when the database cannot be reached.
+* An optional restricted database account (`database/hardening/least-privilege.sql`) that cannot delete or drop anything.
 
 ## Project Status
 
@@ -48,19 +51,19 @@ The platform centralizes information that used to be scattered across chat group
 * [x] Registration, login, logout, and session management with password hashing.
 * [x] Campus email and NIM validation, and registration captcha.
 * [x] Forgot and reset password by email.
-* [x] Found-item reporting.
+* [x] Campus email verification before reporting or claiming items.
+* [x] Found-item reporting, with photo upload and crop.
 * [x] Claim submission, claim status, and claim details.
 * [x] Admin dashboard, item management, and claim verification.
 * [x] Student notifications and admin alerts.
 * [x] Student profile with photo or avatar.
 * [x] Data encryption and blind indexes.
 * [x] Backup and restore system.
+* [x] Emergency administrator sign-in for when the database is down.
 * [x] Responsive interface.
 
 ### Planned
 
-* [ ] Limit repeated login and password-reset attempts.
-* [ ] New FindIT logo across the interface.
 * [ ] Final testing with clean demonstration data.
 
 ## Tech Stack
@@ -73,9 +76,9 @@ The platform centralizes information that used to be scattered across chat group
 | Bootstrap 5 | Responsive interface (served locally from `public/assets/vendor`) |
 | HTML5, CSS3 | Page structure and custom styling |
 | Vanilla JavaScript | Client-side interactions |
-| PHP GD | Registration captcha and profile photo processing |
+| PHP GD | Captcha (register and forgot password) and profile photo processing |
 | OpenSSL (PHP) | AES-256-GCM encryption |
-| Mailpit or Gmail SMTP | Password reset emails during development |
+| Mailpit or Gmail SMTP | Password reset and verification emails during development |
 | Laragon | Local development environment |
 | Git and GitHub | Version control and team collaboration |
 
@@ -98,22 +101,28 @@ FindIT/
 │   ├── controllers/
 │   │   └── AuthController.php  Register, login, logout, password reset
 │   ├── helpers/                Shared tools (auth, csrf, crypto, ui, mailer,
-│   │                           notifications, captcha, avatar, and others)
-│   └── models/                 Admin.php, PasswordReset.php, User.php
+│   │                           verification, recovery, notifications, captcha,
+│   │                           avatar, item-photo, and others)
+│   └── models/                 Admin.php, EmailVerification.php,
+│                               PasswordReset.php, User.php
 ├── config/
 │   └── config.php              Reads .env and opens the database connection
 ├── database/
 │   ├── hardening/              least-privilege.sql
-│   ├── migrations/             001 to 008 (numbered, run in order)
+│   ├── migrations/             001 to 010 (numbered, run in order)
 │   ├── schema.sql              Base tables
 │   └── seed.sql                Categories and the initial admin account
+├── docs/
+│   └── TESTING.md              Manual testing notes
 ├── public/                     Pages and assets that visitors can reach
-│   ├── assets/                 css, js, images, vendor
+│   ├── assets/                 css, js, images (logo, wordmark), vendor
 │   ├── avatar.php, captcha.php, claim.php, forgot-password.php,
 │   ├── index.php, item-detail.php, login.php, logout.php, my-claims.php,
 │   ├── notifications.php, notifications-api.php, profile.php,
-│   └── register.php, report-item.php, reset-password.php
-├── scripts/                    Command-line tools (keys, backup, restore)
+│   ├── recovery-login.php, register.php, report-item.php,
+│   └── reset-password.php, verify-email.php
+├── scripts/                    Command-line tools (keys, backup, restore,
+│                               recovery-account.php)
 ├── .env.example                Template for the local .env file
 ├── .htaccess                   Blocks .env and .git from the web
 └── README.md
@@ -125,7 +134,7 @@ The base tables are in `database/schema.sql`. Features added later live in numbe
 
 | Table | Purpose |
 | --- | --- |
-| `"User"` | Student accounts (note the quotes: the table name starts with a capital letter) |
+| `"User"` | Student accounts, including `email_verified_at` (note the quotes: the table name starts with a capital letter) |
 | `admin` | Administrator accounts and access levels |
 | `category` | Item categories |
 | `location` | Item discovery locations |
@@ -135,6 +144,7 @@ The base tables are in `database/schema.sql`. Features added later live in numbe
 | `password_resets` | Password reset tokens (hashed, expiring, single use) |
 | `pickup_token` | Pickup codes for approved claims |
 | `user_photo` | Profile photos and chosen avatars |
+| `email_verifications` | Email verification links (hashed, expiring, single use) |
 
 Status values are stored as exact English text and are case-sensitive:
 
@@ -153,6 +163,8 @@ Status values are stored as exact English text and are case-sensitive:
 | `006_password_resets.sql` | Password reset tokens |
 | `007_notifcation_upgrade.sql` | Notification types, links, and de-duplication |
 | `008_user_profile_photo.sql` | Profile photo and avatars |
+| `009_add_item_photo.sql` | Check that the item photo column exists |
+| `010_email_verification.sql` | Email verification (`email_verified_at` and `email_verifications`). Existing students are marked as verified |
 
 The migrations are written to be safe to run more than once. The database is not shared through Git, so **every team member runs the migrations on their own PostgreSQL**. If `003` fails with "could not create unique index", the local data contains duplicate claims from the same student for the same item. Remove the extras and run it again.
 
@@ -208,7 +220,7 @@ Never commit `.env`.
 
 1. `database/schema.sql`
 2. `database/seed.sql`
-3. every file in `database/migrations/`, from `001` to `008`
+3. every file in `database/migrations/`, from `001` to `010`
 
 **Existing database:** run only the migrations you have not run yet. Do not run `schema.sql` again.
 
@@ -228,14 +240,20 @@ http://localhost/FindIT/public/
 
 Register a student account with an email like `123456789012@student.polinema.ac.id`, where `123456789012` is a 12-digit NIM, and enter the same NIM as the Student ID. Sign in as the administrator with the seeded admin account to use the admin panel.
 
-### 7. Email for password reset
+A new student account must verify its email before it can report or claim items: open **Profile**, press **Send verification email**, then open the link from the email (in Mailpit when testing locally).
+
+### 7. Email for password reset and verification
 
 Choose one option in `.env`:
 
 * **Mailpit (local, nothing is really sent):** `MAIL_HOST=127.0.0.1`, `MAIL_PORT=1025`, and leave the rest empty. Run Mailpit, then read the emails in its web page.
 * **Gmail SMTP:** `MAIL_HOST=smtp.gmail.com`, `MAIL_PORT=587`, `MAIL_ENCRYPTION=tls`, your Gmail address as `MAIL_USERNAME` and `MAIL_FROM_ADDRESS`, and a Google App Password as `MAIL_PASSWORD`.
 
-The reset link points to `APP_URL`, so it only opens on the computer that runs the server.
+The reset and verification links point to `APP_URL`, so they only open on the computer that runs the server.
+
+### 8. Optional: restricted database account
+
+By default the app connects as `postgres`. For a safer setup, run `database/hardening/least-privilege.sql` in pgAdmin (after changing the password inside it), then set `DB_USER=findit_app` and `DB_PASS` in `.env`. Keep `postgres` for maintenance and restore only. New tables need a `GRANT` for `findit_app`, like migration `010` does.
 
 ## Backup and Restore
 
@@ -252,12 +270,28 @@ The backup system is controlled from the admin panel (**Backups**) and from the 
 
 Backups are encrypted with `APP_ENC_KEY`, so keep that key safe. Restoring from the website can be switched off with `RESTORE_WEB_ENABLED=false`.
 
+## Emergency Administrator
+
+If the database is deleted or broken, nobody could sign in to restore it. For that case, set up one emergency administrator on the computer that runs the server:
+
+```bash
+php scripts/recovery-account.php
+```
+
+It asks for an email and a password (at least 12 characters) and writes `ADMIN_RECOVERY_EMAIL` and `ADMIN_RECOVERY_PASSWORD_HASH` to `.env`. Only the password hash is stored.
+
+* Sign in at `public/recovery-login.php`. It works only while the database cannot be reached.
+* An emergency session can open only **Backup Management**, and only for 30 minutes.
+* After 5 wrong attempts the sign-in is locked for 15 minutes.
+* Students cannot sign in until the restore is finished, because their accounts are in the database.
+
 ## Development Notes
 
 * Database access uses PDO. Always use prepared statements when a query contains user input.
 * Escape every value printed to a page with `fiE()` (a wrapper around `htmlspecialchars`).
 * Every form that changes data must send and verify a CSRF token.
 * Pages for signed-in users start with `requireRole('student')` or `requireRole('admin')`.
+* Pages where a student reports or claims an item also call `requireVerifiedStudent($pdo)` right after `requireRole('student')`.
 * Keep existing table and column names unless the whole team agrees on a change.
 * Put every schema change in a new numbered file in `database/migrations/`.
 * Do not commit `.env`, backups, or uploaded files.
