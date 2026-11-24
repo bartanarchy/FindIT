@@ -3,6 +3,7 @@
 require_once dirname(__DIR__) . '/app/controllers/AuthController.php';
 require_once dirname(__DIR__) . '/app/helpers/auth.php';
 require_once dirname(__DIR__) . '/app/helpers/csrf.php';
+require_once dirname(__DIR__) . '/app/helpers/captcha.php';
 
 redirectLoggedInUser();
 
@@ -16,7 +17,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
         $errorMessage = 'Your session has expired. Please refresh the page and try again.';
-    } else {
+    }elseif (!verifyCaptcha($_POST['captcha'] ?? '')) {
+        $errorMessage = 'The captcha code is incorrect. Please try again.';
+
+    }else {
         $result = $authController->requestPasswordReset($email);
 
         if ($result['success']) {
@@ -74,9 +78,43 @@ fiPublicNav(null, 'login');
                 <div class="invalid-feedback">Please enter your Polinema student email.</div>
             </div>
 
+            <?php // Captcha: draw code, refresh button, and answer column?>
+            <div class="mt-3">
+                <label for="captcha" class="form-label">Verify that you are not a bot</label>
+
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <?php // browser ask iage to captcha.php ?>
+                    <img
+                        id="captcha-image"
+                        src="captcha.php"
+                        alt="Captcha code"
+                        width="200"
+                        height="60"
+                        style="border: 1px solid #ddd; border-radius: 8px;">
+
+                    <?php ?>
+                    <button
+                        type="button"
+                        class="btn btn-outline-secondary btn-sm"
+                        onclick="document.getElementById('captcha-image').src = 'captcha.php?t=' + Date.now();">
+                        Refresh
+                    </button>
+                </div>
+
+                <input
+                    type="text"
+                    class="form-control"
+                    id="captcha"
+                    name="captcha"
+                    maxlength="5"
+                    autocomplete="off"
+                    placeholder="Type the characters above"
+                    required>
+            </div>
+
             <button
                 type="submit"
-                class="btn btn-primary w-100"
+                class="btn btn-primary w-100 mt-3"
                 data-loading-text="Sending reset link...">
                 Send reset link
             </button>
