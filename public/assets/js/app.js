@@ -157,6 +157,37 @@
         });
     }
 
+    /* 2b. Live "must match" check (for example Confirm password).
+       The message shows while the person types, without pressing the submit button. */
+    function initLiveMatch() {
+        document.querySelectorAll('input[data-match]').forEach(function (field) {
+            var other = document.querySelector(field.getAttribute('data-match'));
+            if (!other) {
+                return;
+            }
+
+            function check() {
+                // Stay quiet while the field is still empty, so nobody is told off too early.
+                if (field.value === '') {
+                    field.setCustomValidity('');
+                    field.classList.remove('is-invalid', 'is-valid');
+                    return;
+                }
+
+                var mismatch = field.value !== other.value;
+
+                // setCustomValidity also keeps the form from being submitted with different values.
+                field.setCustomValidity(mismatch ? 'Values do not match.' : '');
+                field.classList.toggle('is-invalid', mismatch);
+                field.classList.toggle('is-valid', !mismatch);
+            }
+
+            // Check when the confirm field changes, and when the first field changes too.
+            field.addEventListener('input', check);
+            other.addEventListener('input', check);
+        });
+    }
+
     /* 3. Show or hide a password. */
     function initPasswordToggles() {
         document.querySelectorAll('[data-toggle-password]').forEach(function (button) {
@@ -315,6 +346,7 @@
     document.addEventListener('DOMContentLoaded', function () {
         initForms();
         initCounters();
+        initLiveMatch();
         initPasswordToggles();
         initNimMatch();
         initAutoHide();
@@ -1406,5 +1438,3 @@
         });
     });
 })();
-
-
