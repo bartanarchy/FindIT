@@ -1324,7 +1324,7 @@
     }
 })();
 
-/* Found item photo preview */
+/* Found item photo: crop it in a 4:3 frame before upload. */
 (function () {
     'use strict';
 
@@ -1332,54 +1332,280 @@
         var input = document.getElementById('item_photo');
         var container = document.getElementById('photo-preview-container');
         var preview = document.getElementById('photo-preview');
+        var dialog = document.getElementById('fiItemCropper');
+        var adjustBtn = document.getElementById('photo-adjust');
 
+        // Run only on the report page, where all the parts exist.
         if (!input || !container || !preview) {
             return;
         }
 
-        var maxBytes = 5 * 1024 * 1024;
+        var maxPickBytes = 10 * 1024 * 1024;   // photos straight from a phone camera are big
+        var maxUploadBytes = 5 * 1024 * 1024;  // what the server accepts
         var allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-        var objectUrl = null;
+        var OUTPUT_W = 1024;                   // width of the cropped photo (height follows the 4:3 frame)
+        var previewUrl = null;
+        var originalFile = null;               // the photo the person picked (uncropped)
+        var committed = null;                  // the last cropped file placed in the input
+        var committedSource = null;            // the original photo that `committed` came from
+        var canCrop = !!(dialog && window.DataTransfer && HTMLCanvasElement.prototype.toBlob);
 
-        input.addEventListener('change', function () {
-            var file = input.files && input.files[0];
+        function showPreview(file) {
+            if (previewUrl) {
+                URL.revokeObjectURL(previewUrl);
+            }
+            previewUrl = URL.createObjectURL(file);
+            preview.src = previewUrl;
+            container.classList.remove('d-none');
+        }
 
+        // Forget the chosen photo completely.
+        function clearAll() {
+            input.value = '';
+            originalFile = null;
+            committed = null;
+            committedSource = null;
+            if (previewUrl) {
+                URL.revokeObjectURL(previewUrl);
+                previewUrl = null;
+            }
+            preview.src = '';
+            container.classList.add('d-none');
+        }
+
+        function reject(message) {
+            input.setCustomValidity(message);
+            input.reportValidity();
+            // Clear the message again, otherwise the form could not be sent without a photo.
             input.setCustomValidity('');
+            clearAll();
+        }
 
+        /* ---------- crop dialog ---------- */
+        var viewport, image, zoom, state, dragging, objectUrl;
+
+        if (canCrop) {
+            viewport = dialog.querySelector('[data-item-crop-viewport]');
+            image = dialog.querySelector('[data-item-crop-image]');
+            zoom = dialog.querySelector('[data-item-crop-zoom]');
+            state = { nw: 0, nh: 0, vw: 0, vh: 0, base: 1, z: 1, ox: 0, oy: 0 };
+            dragging = null;
+            objectUrl = null;
+        }
+
+        // Keep the photo covering the frame, then draw it at the right size and place.
+        function clampAndRender() {
+            var scale = state.base * state.z;
+            var maxX = Math.max(0, (state.nw * scale - state.vw) / 2);
+            var maxY = Math.max(0, (state.nh * scale - state.vh) / 2);
+            state.ox = Math.min(maxX, Math.max(-maxX, state.ox));
+            state.oy = Math.min(maxY, Math.max(-maxY, state.oy));
+
+            var w = state.nw * scale;
+            var h = state.nh * scale;
+            image.style.width = w + 'px';
+            image.style.height = h + 'px';
+            image.style.left = (state.vw / 2 + state.ox - w / 2) + 'px';
+            image.style.top = (state.vh / 2 + state.oy - h / 2) + 'px';
+        }
+
+        function setZoom(value) {
+            state.z = Math.min(4, Math.max(1, value));
+            zoom.value = String(state.z);
+            clampAndRender();
+        }
+
+        function openCropper(file) {
+            if (objectUrl) {
+                URL.revokeObjectURL(objectUrl);
+            }
+            objectUrl = URL.createObjectURL(file);
+
+            image.onload = function () {
+                dialog.hidden = false;
+                document.body.style.overflow = 'hidden';
+
+                // The frame must be visible before it can be measured.
+                state.vw = viewport.clientWidth;
+                state.vh = viewport.clientHeight;
+                state.nw = image.naturalWidth;
+                state.nh = image.naturalHeight;
+                // "Cover" the frame: the photo fills it completely at zoom 1.
+                state.base = Math.max(state.vw / state.nw, state.vh / state.nh);
+                state.ox = 0;
+                state.oy = 0;
+                setZoom(1);
+                viewport.focus();
+            };
+            image.onerror = function () {
+                reject('This file could not be read as an image.');
+            };
+            image.src = objectUrl;
+        }
+
+        function closeCropper() {
+            dialog.hidden = true;
+            document.body.style.overflow = '';
             if (objectUrl) {
                 URL.revokeObjectURL(objectUrl);
                 objectUrl = null;
             }
+            input.focus();
+        }
 
-            preview.src = '';
-            container.classList.add('d-none');
+        function cancelCrop() {
+            if (committed) {
+                // Go back to the last cropped photo, so a big uncropped file is never uploaded.
+                var back = new DataTransfer();
+                back.items.add(committed);
+                input.files = back.files;
+                originalFile = committedSource;
+            } else {
+                // Nothing was ever applied: clear the choice completely.
+                clearAll();
+            }
+            input.setCustomValidity('');
+            closeCropper();
+        }
+
+        function applyCrop() {
+            var scale = state.base * state.z;
+            var left = state.vw / 2 + state.ox - (state.nw * scale) / 2;
+            var top = state.vh / 2 + state.oy - (state.nh * scale) / 2;
+
+            // The part of the original photo that is inside the frame.
+            var sx = -left / scale;
+            var sy = -top / scale;
+            var sw = state.vw / scale;
+            var sh = state.vh / scale;
+
+            var canvas = document.createElement('canvas');
+            canvas.width = OUTPUT_W;
+            canvas.height = Math.round(OUTPUT_W * state.vh / state.vw);
+            var ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff';            // PNG transparency becomes white
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(image, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+
+            canvas.toBlob(function (blob) {
+                if (!blob || blob.size > maxUploadBytes) {
+                    closeCropper();
+                    reject('The photo could not be prepared. Please try another photo.');
+                    return;
+                }
+                var cropped = new File([blob], 'item-photo.jpg', { type: 'image/jpeg' });
+                var transfer = new DataTransfer();
+                transfer.items.add(cropped);
+                input.files = transfer.files;
+                input.setCustomValidity('');
+
+                committed = cropped;
+                committedSource = originalFile;
+
+                showPreview(cropped);
+                closeCropper();
+            }, 'image/jpeg', 0.9);
+        }
+
+        if (canCrop) {
+            viewport.addEventListener('pointerdown', function (event) {
+                dragging = { x: event.clientX, y: event.clientY };
+                viewport.setPointerCapture(event.pointerId);
+                event.preventDefault();
+            });
+            viewport.addEventListener('pointermove', function (event) {
+                if (!dragging) {
+                    return;
+                }
+                state.ox += event.clientX - dragging.x;
+                state.oy += event.clientY - dragging.y;
+                dragging = { x: event.clientX, y: event.clientY };
+                clampAndRender();
+            });
+            ['pointerup', 'pointercancel'].forEach(function (name) {
+                viewport.addEventListener(name, function () {
+                    dragging = null;
+                });
+            });
+            viewport.addEventListener('wheel', function (event) {
+                event.preventDefault();
+                setZoom(state.z + (event.deltaY < 0 ? 0.1 : -0.1));
+            }, { passive: false });
+            viewport.addEventListener('keydown', function (event) {
+                var step = 10;
+                var handled = true;
+                if (event.key === 'ArrowLeft') { state.ox += step; }
+                else if (event.key === 'ArrowRight') { state.ox -= step; }
+                else if (event.key === 'ArrowUp') { state.oy += step; }
+                else if (event.key === 'ArrowDown') { state.oy -= step; }
+                else if (event.key === '+' || event.key === '=') { setZoom(state.z + 0.1); }
+                else if (event.key === '-') { setZoom(state.z - 0.1); }
+                else { handled = false; }
+                if (handled) {
+                    event.preventDefault();
+                    clampAndRender();
+                }
+            });
+            zoom.addEventListener('input', function () {
+                setZoom(parseFloat(zoom.value));
+            });
+
+            dialog.querySelectorAll('[data-item-crop-cancel]').forEach(function (el) {
+                el.addEventListener('click', cancelCrop);
+            });
+            dialog.querySelector('[data-item-crop-apply]').addEventListener('click', applyCrop);
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape' && !dialog.hidden) {
+                    cancelCrop();
+                }
+            });
+        }
+
+        // "Adjust photo" opens the crop frame again on the original photo.
+        if (adjustBtn) {
+            adjustBtn.addEventListener('click', function () {
+                if (canCrop && originalFile) {
+                    openCropper(originalFile);
+                }
+            });
+        }
+
+        input.addEventListener('change', function () {
+            var file = input.files && input.files[0];
+            input.setCustomValidity('');
 
             if (!file) {
+                clearAll();
                 return;
             }
-
             if (allowedTypes.indexOf(file.type) === -1) {
-                input.setCustomValidity('Only JPG, PNG, and WEBP images are allowed.');
-                input.reportValidity();
-                input.value = '';
+                reject('Only JPG, PNG, and WEBP images are allowed.');
                 return;
             }
 
-            if (file.size > maxBytes) {
-                input.setCustomValidity('The maximum photo size is 5 MB.');
-                input.reportValidity();
-                input.value = '';
+            // Old browsers: no crop, so the normal 5 MB limit applies to the whole photo.
+            if (!canCrop) {
+                if (file.size > maxUploadBytes) {
+                    reject('The maximum photo size is 5 MB.');
+                    return;
+                }
+                showPreview(file);
                 return;
             }
 
-            objectUrl = URL.createObjectURL(file);
-            preview.src = objectUrl;
-            container.classList.remove('d-none');
+            if (file.size > maxPickBytes) {
+                reject('The photo is too large. Please choose one under 10 MB.');
+                return;
+            }
+            originalFile = file;
+            committed = null;
+            committedSource = null;
+            openCropper(file);
         });
 
         window.addEventListener('beforeunload', function () {
-            if (objectUrl) {
-                URL.revokeObjectURL(objectUrl);
+            if (previewUrl) {
+                URL.revokeObjectURL(previewUrl);
             }
         });
     });

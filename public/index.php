@@ -102,7 +102,13 @@ fiPublicNav($user, 'home');
 <!-- Boostrap  -->
 <main class="fi-main" id="main">
     <div class="fi-container">
-
+    <?php
+    // Show the one-time message set by report-item.php, then forget it.
+    if (!empty($_SESSION['home_flash'])) {
+        fiAlert('success', (string) $_SESSION['home_flash'], true);
+        unset($_SESSION['home_flash']);
+    }
+    ?>
         <header class="fi-hero">
             <div class="fi-hero-text">
                 <p class="fi-eyebrow">Campus lost &amp; found / FindIT</p>

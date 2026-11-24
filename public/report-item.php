@@ -213,7 +213,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $insertStmt->execute();
 
                     // Redirect after saving to avoid duplicate submissions.
-                    header('Location: report-item.php?created=1');
+                    $_SESSION['home_flash'] = 'Your found item report has been submitted successfully.';
+                    header('Location: index.php');
                     exit;
                 }
             }
@@ -359,7 +360,7 @@ fiPublicNav(currentUser(), 'report');
                                 name="item_photo"
                                 accept="image/jpeg,image/png,image/webp">
                             <div class="form-text">
-                                Upload a clear photo of the found item. JPG, PNG, or WEBP. Maximum size: 5 MB.
+                                Upload a clear photo of the found item. JPG, PNG, or WEBP. After choosing a photo you can move and zoom it to crop.
                             </div>
                             <div class="invalid-feedback">
                                 Please select a valid image file.
@@ -371,6 +372,9 @@ fiPublicNav(currentUser(), 'report');
                                     alt="Selected item photo preview"
                                     class="img-fluid rounded"
                                     style="max-height: 240px; object-fit: contain;">
+                                <div>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm mt-2" id="photo-adjust">Adjust photo</button>
+                                </div>
                             </div>
                         </div>
 
@@ -431,7 +435,29 @@ fiPublicNav(currentUser(), 'report');
         </div>
     </div>
 </main>
-
+<?php // Crop dialog: opens after a photo is chosen so it can be moved and zoomed first. ?>
+<div class="fi-lightbox fi-cropper fi-cropper-rect" id="fiItemCropper" role="dialog" aria-modal="true"
+     aria-labelledby="itemCropTitle" hidden>
+    <div class="fi-lightbox-backdrop" data-item-crop-cancel></div>
+    <div class="fi-crop-card">
+        <h2 class="fi-crop-title" id="itemCropTitle">Crop your photo</h2>
+        <p class="fi-crop-help">Drag the photo to move it. Use the slider or the mouse wheel to zoom.</p>
+        <div class="fi-crop-viewport" data-item-crop-viewport tabindex="0"
+             aria-label="Photo position. Use the arrow keys to move and plus or minus to zoom.">
+            <img alt="" draggable="false" data-item-crop-image>
+            <span class="fi-crop-mask" aria-hidden="true"></span>
+            <span class="fi-crop-grid" aria-hidden="true"></span>
+        </div>
+        <label class="fi-crop-zoom">
+            <span>Zoom</span>
+            <input type="range" min="1" max="4" step="0.01" value="1" data-item-crop-zoom aria-label="Zoom">
+        </label>
+        <div class="fi-crop-actions">
+            <button type="button" class="btn btn-outline-secondary" data-item-crop-cancel>Cancel</button>
+            <button type="button" class="btn btn-primary" data-item-crop-apply>Use this photo</button>
+        </div>
+    </div>
+</div>
 <?php fiFooter(); ?>
 <?php fiScripts('assets'); ?>
 </body>

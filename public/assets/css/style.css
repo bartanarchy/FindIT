@@ -3574,4 +3574,32 @@ a.fi-profile-stat:hover {
     border-radius: 20px !important;
 }
 
+/* Item photo crop: a 4:3 rectangle instead of the round profile frame */
+.fi-cropper-rect .fi-crop-card {
+    width: min(92vw, 420px);
+}
 
+.fi-cropper-rect .fi-crop-viewport {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+}
+
+.fi-cropper-rect .fi-crop-mask {
+    border-radius: 8px;
+    box-shadow: none;
+}
+
+/* Rule-of-thirds grid on top of the crop frame (looks only, does not change the crop) */
+.fi-cropper-rect .fi-crop-grid {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+        linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+        linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+        linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+        linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55));
+    background-repeat: no-repeat;
+    background-size: 1px 100%, 1px 100%, 100% 1px, 100% 1px;
+    background-position: 33.333% 0, 66.666% 0, 0 33.333%, 0 66.666%;
+}
