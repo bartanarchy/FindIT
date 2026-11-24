@@ -183,7 +183,7 @@ fiPublicNav($viewer, 'home');
                                     src="<?= fiE($item['photo_src']) ?>"
                                     alt="<?= fiE($item['nama_barang']) ?>"
                                     loading="lazy"
-                                    style="border-radius: 20px !important;">
+                                    style="border-radius: 20px !important;"> 
                             </div>
                         <?php endif; ?>
 
