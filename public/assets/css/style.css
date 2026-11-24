@@ -1889,22 +1889,23 @@ textarea.form-control {
 
 /* Alert count in the navigation bar */
 .fi-nav-count {
-    display: inline-flex;          
-    align-items: center;           
-    justify-content: center;       
-    vertical-align: middle;       
-    position: relative;           
-    top: -1px;                     
-    min-width: 1.1rem;            
-    height: 1.1rem;                
-    padding: 0 6px;                
-    color: #fff;                 
-    font-size: 0.68rem;            
-    font-weight: 700;              
-    line-height: 1;                
-    background: #B9473C;           
-    border-radius: 999px;          
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+    position: relative;
+    top: -1px;
+    min-width: 1.1rem;
+    height: 1.1rem;
+    padding: 0 6px;
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 1;
+    background: #B9473C;
+    border-radius: 999px;
 }
+
 /* ==========================================================================
    19. Notifications, alerts and toasts
    Uses the existing FindIT tokens (cream paper, olive green, status colours).
@@ -3141,6 +3142,7 @@ a.fi-profile-stat:hover {
     position: absolute;
     inset: 0;
     background: rgba(246, 243, 236, 0.82);
+    -webkit-backdrop-filter: blur(8px);
     backdrop-filter: blur(8px);
     cursor: zoom-out;
 }
@@ -3316,6 +3318,200 @@ a.fi-profile-stat:hover {
         padding: 17px;
     }
 }
+
+
+/* ---------------------------------------------------------------
+   Profile: card titles with an icon, email verification,
+   password strength meter and the photo crop dialog
+   --------------------------------------------------------------- */
+.fi-card-title {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 18px;
+}
+
+.fi-card-title .fi-profile-h {
+    margin: 0;
+}
+
+.fi-card-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+    color: var(--fi-ink);
+    background: var(--fi-paper);
+    border: 1px solid var(--fi-border);
+    border-radius: var(--fi-radius-sm);
+}
+
+.fi-card-sub {
+    margin: 2px 0 0;
+    color: var(--fi-muted);
+    font-size: 0.85rem;
+}
+
+.fi-verify-card {
+    border-color: #E5D08A;
+}
+
+.fi-verify-card .fi-card-icon {
+    color: var(--fi-warning-ink);
+    background: var(--fi-warning-bg);
+    border-color: transparent;
+}
+
+.fi-verify-card--ok {
+    border-color: var(--fi-lime-deep);
+}
+
+.fi-verify-card--ok .fi-card-icon {
+    color: var(--fi-success-ink);
+    background: var(--fi-success-bg);
+}
+
+.fi-verify-steps {
+    margin: 0 0 16px;
+    padding-left: 1.25rem;
+    color: var(--fi-ink-soft);
+}
+
+.fi-verify-steps li + li {
+    margin-top: 4px;
+}
+
+/* Password strength meter */
+.fi-strength-head {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    color: var(--fi-muted);
+    font-size: 0.82rem;
+}
+
+.fi-strength-bars {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+}
+
+.fi-strength-bar {
+    height: 8px;
+    background: var(--fi-paper-2);
+    border-radius: 999px;
+    transition: background-color 0.2s ease;
+}
+
+.fi-strength[data-level="1"] .fi-strength-bar:nth-child(-n+1) { background: #C95C4E; }
+.fi-strength[data-level="2"] .fi-strength-bar:nth-child(-n+2) { background: #D9A83A; }
+.fi-strength[data-level="3"] .fi-strength-bar:nth-child(-n+3) { background: #8DAA4F; }
+.fi-strength[data-level="4"] .fi-strength-bar { background: #4F7A3A; }
+
+.fi-strength[data-level="1"] .fi-strength-label { color: var(--fi-danger-ink); }
+.fi-strength[data-level="2"] .fi-strength-label { color: var(--fi-warning-ink); }
+.fi-strength[data-level="3"] .fi-strength-label,
+.fi-strength[data-level="4"] .fi-strength-label { color: var(--fi-success-ink); }
+
+.fi-strength-label {
+    font-weight: 600;
+}
+
+.fi-strength-hint {
+    margin: 8px 0 0;
+    color: var(--fi-muted);
+    font-size: 0.8rem;
+}
+
+/* Photo crop dialog (reuses the dimmed full-screen layer of the lightbox) */
+.fi-crop-card {
+    position: relative;
+    z-index: 1;
+    width: min(92vw, 360px);
+    padding: 22px;
+    background: var(--fi-surface);
+    border-radius: var(--fi-radius-md);
+    box-shadow: 0 20px 50px rgba(59, 67, 51, 0.35);
+}
+
+.fi-cropper .fi-lightbox-backdrop {
+    cursor: default;
+}
+
+.fi-crop-title {
+    margin: 0 0 4px;
+    font-size: 1.15rem;
+}
+
+.fi-crop-help {
+    margin: 0 0 14px;
+    color: var(--fi-muted);
+    font-size: 0.85rem;
+}
+
+.fi-crop-viewport {
+    position: relative;
+    width: min(100%, 300px);
+    aspect-ratio: 1 / 1;
+    margin: 0 auto;
+    overflow: hidden;
+    background: #2B2F26;
+    border-radius: 12px;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+}
+
+.fi-crop-viewport:active {
+    cursor: grabbing;
+}
+
+/* The viewport takes keyboard focus (arrow keys move, +/- zoom), so show it clearly. */
+.fi-crop-viewport:focus-visible {
+    outline: 3px solid var(--fi-lime-deep);
+    outline-offset: 3px;
+}
+
+.fi-crop-viewport img {
+    position: absolute;
+    max-width: none;
+    pointer-events: none;
+    user-select: none;
+}
+
+/* The circle that shows what will be kept. */
+.fi-crop-mask {
+    position: absolute;
+    inset: 0;
+    border: 2px solid rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.55);
+    pointer-events: none;
+}
+
+.fi-crop-zoom {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 16px 0 0;
+    color: var(--fi-muted);
+    font-size: 0.85rem;
+}
+
+.fi-crop-zoom input {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.fi-crop-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 18px;
+}
+
 
 /* Public item detail photo */
 .fi-item-detail-photo {
