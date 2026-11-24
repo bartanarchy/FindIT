@@ -4,9 +4,12 @@ require_once dirname(__DIR__) . '/config/config.php';
 require_once dirname(__DIR__) . '/app/helpers/auth.php';
 require_once dirname(__DIR__) . '/app/helpers/csrf.php';
 require_once dirname(__DIR__) . '/app/helpers/item-photo.php';
+require_once dirname(__DIR__) . '/app/helpers/verification.php';
 
 // only logged-in students can report found items.
 requireRole('student');
+// An unverified student is sent to the profile page right away 
+requireVerifiedStudent($pdo);
 
 $user = currentUser();
 $userId = (int) ($user['id'] ?? 0);
