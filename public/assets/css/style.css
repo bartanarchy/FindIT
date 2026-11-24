@@ -3603,3 +3603,27 @@ a.fi-profile-stat:hover {
     background-size: 1px 100%, 1px 100%, 100% 1px, 100% 1px;
     background-position: 33.333% 0, 66.666% 0, 0 33.333%, 0 66.666%;
 }
+
+/* File input: make the "Choose File" button rounded and evenly spaced inside the field */
+.form-control[type="file"] {
+    padding: 7px 6px;
+    line-height: 1.6;
+    cursor: pointer;
+}
+
+.form-control[type="file"]::file-selector-button {
+    margin: 0 10px 0 0;
+    padding: 4px 12px;
+    font-size: 0.9rem;
+    color: var(--fi-neutral-ink);
+    background-color: var(--fi-neutral-bg);
+    border: 0;
+    border-radius: 7px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.form-control[type="file"]:hover::file-selector-button {
+    background-color: var(--fi-lime-soft);
+}
